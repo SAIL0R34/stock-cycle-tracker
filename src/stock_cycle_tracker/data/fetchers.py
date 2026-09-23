@@ -207,85 +207,11 @@ class CoinbaseFetcher(BaseFetcher):
         return value.replace(tzinfo=timezone.utc, microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-class BinanceFetcher(BaseFetcher):
-    """Fetcher for Binance data."""
-
-    name = "binance"
-
-    def __init__(self, api_key: Optional[str] = None, api_secret: Optional[str] = None):
-        """Initialize the Binance fetcher.
-
-        Args:
-            api_key: Binance API key (optional)
-            api_secret: Binance API secret (optional)
-        """
-        self.api_key = api_key
-        self.api_secret = api_secret
-        self.base_url = "https://api.binance.com"
-
-    async def fetch_ohlcv(
-        self,
-        symbol: str,
-        timeframe: Timeframe,
-        start: datetime,
-        end: datetime,
-        limit: Optional[int] = None,
-    ) -> list[OHLCV]:
-        """Fetch OHLCV data from Binance."""
-        # TODO: Implement actual API calls
-        raise NotImplementedError(
-            "Binance fetcher not yet implemented. "
-            "Use mock data or implement with binance API."
-        )
-
-    async def get_available_periods(self, symbol: str) -> list[tuple[datetime, datetime]]:
-        """Get available date ranges for Binance data."""
-        # TODO: Implement actual API calls
-        raise NotImplementedError
-
-
-class KrakenFetcher(BaseFetcher):
-    """Fetcher for Kraken data."""
-
-    name = "kraken"
-
-    def __init__(self, api_key: Optional[str] = None, api_secret: Optional[str] = None):
-        """Initialize the Kraken fetcher.
-
-        Args:
-            api_key: Kraken API key (optional)
-            api_secret: Kraken API secret (optional)
-        """
-        self.api_key = api_key
-        self.api_secret = api_secret
-        self.base_url = "https://api.kraken.com"
-
-    async def fetch_ohlcv(
-        self,
-        symbol: str,
-        timeframe: Timeframe,
-        start: datetime,
-        end: datetime,
-        limit: Optional[int] = None,
-    ) -> list[OHLCV]:
-        """Fetch OHLCV data from Kraken."""
-        # TODO: Implement actual API calls
-        raise NotImplementedError(
-            "Kraken fetcher not yet implemented. "
-            "Use mock data or implement with kraken API."
-        )
-
-    async def get_available_periods(self, symbol: str) -> list[tuple[datetime, datetime]]:
-        """Get available date ranges for Kraken data."""
-        # TODO: Implement actual API calls
-        raise NotImplementedError
-
-
 def get_fetcher(source: str, api_key: Optional[str] = None, api_secret: Optional[str] = None) -> BaseFetcher:
     """Factory function to get a fetcher by name.
 
     Args:
-        source: Data source name (coinbase, binance, kraken)
+        source: Data source name (alpaca, coinbase)
         api_key: API key for the source (optional)
         api_secret: API secret for the source (optional)
 
@@ -295,10 +221,12 @@ def get_fetcher(source: str, api_key: Optional[str] = None, api_secret: Optional
     Raises:
         ValueError: If source is not supported
     """
+    # Local import avoids a circular dependency (AlpacaFetcher imports BaseFetcher).
+    from stock_cycle_tracker.data.alpaca_fetcher import AlpacaFetcher
+
     fetchers = {
+        "alpaca": AlpacaFetcher,
         "coinbase": CoinbaseFetcher,
-        "binance": BinanceFetcher,
-        "kraken": KrakenFetcher,
     }
 
     if source not in fetchers:

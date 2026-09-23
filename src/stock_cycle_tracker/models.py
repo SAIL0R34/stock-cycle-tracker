@@ -416,6 +416,7 @@ class DecisionRecord(BaseModel):
     contributions: list[DecisionContribution] = Field(default_factory=list)
     invalidations: list[DecisionInvalidation] = Field(default_factory=list)
     horizon_bars: int
+    grading_mode: str = "wallclock"  # "bars" (session-safe) | "wallclock"
     grade_due_timestamp: datetime
     hold_band_pct: float = 1.0
     config_hash: str = ""
@@ -534,6 +535,8 @@ class Config(BaseModel):
     pattern_max_matches: int = 8
     enable_decision_engine: bool = True
     decision_walk_forward_checkpoints: int = 12
+    # "bars": grade N bars after the decision (session-safe); "wallclock": N bars of wall-time
+    grading_mode: str = "bars"
     enable_decision_memory: bool = True
     enable_adaptive_decision_weights: bool = True
     decision_learning_min_samples: int = 5

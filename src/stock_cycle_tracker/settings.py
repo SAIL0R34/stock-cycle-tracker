@@ -13,8 +13,8 @@ class DataSettings(BaseModel):
 
     data_dir: str = "data"
     cache_dir: str = "data/cache"
-    default_source: str = "coinbase"  # coinbase, binance, kraken
-    supported_sources: list[str] = ["coinbase", "binance", "kraken"]
+    default_source: str = "alpaca"  # alpaca (equities), coinbase (crypto)
+    supported_sources: list[str] = ["alpaca", "coinbase"]
 
 
 class ChartSettings(BaseModel):

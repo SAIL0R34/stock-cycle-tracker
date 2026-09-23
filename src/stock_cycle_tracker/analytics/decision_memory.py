@@ -153,6 +153,7 @@ class DecisionMemoryStore:
         data: list[OHLCV],
         summary: SummaryStatistics | None,
         config_hash: str = "",
+        grading_mode: str = "wallclock",
     ) -> DecisionRecord:
         """Log (or update) the decision made on the latest candle."""
         if not data:
@@ -175,6 +176,7 @@ class DecisionMemoryStore:
             contributions=brief.contributions,
             invalidations=brief.invalidations,
             horizon_bars=horizon,
+            grading_mode=grading_mode,
             grade_due_timestamp=candle_ts + horizon * delta,
             hold_band_pct=hold_band_pct(summary, horizon),
             config_hash=config_hash,
@@ -284,12 +286,21 @@ def grade_record(
         timestamps = [_to_naive_utc(c.timestamp) for c in data]
 
     due = _to_naive_utc(record.grade_due_timestamp)
-    if timestamps[-1] < due:
-        return False  # outcome window not covered yet
-
-    # Exit candle: first candle at/after the due timestamp.
-    exit_index = bisect_left(timestamps, due)
-    exit_index = min(exit_index, len(data) - 1)
+    if record.grading_mode == "bars":
+        # Session-safe: the outcome window is N *candles* after the decision
+        # candle, so weekends/holidays consume zero horizon.
+        entry_index = bisect_left(timestamps, _to_naive_utc(record.candle_timestamp))
+        if entry_index >= len(timestamps) or timestamps[entry_index] != _to_naive_utc(record.candle_timestamp):
+            return False  # decision candle not present in this dataset
+        if entry_index + record.horizon_bars >= len(timestamps):
+            return False  # not enough future candles yet
+        exit_index = entry_index + record.horizon_bars
+    else:
+        if timestamps[-1] < due:
+            return False  # outcome window not covered yet
+        # Exit candle: first candle at/after the due timestamp.
+        exit_index = bisect_left(timestamps, due)
+        exit_index = min(exit_index, len(data) - 1)
     exit_candle = data[exit_index]
     exit_ts = timestamps[exit_index]
 

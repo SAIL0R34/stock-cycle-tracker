@@ -293,7 +293,8 @@ class AnalysisService:
         if memory is not None:
             try:
                 memory.log_live_decision(
-                    brief, symbol, timeframe, result.raw_data, result.summary, config_hash
+                    brief, symbol, timeframe, result.raw_data, result.summary, config_hash,
+                    grading_mode=self.config.grading_mode,
                 )
                 brief.track_record = build_track_record(
                     memory, symbol, timeframe, source_stats or [], calibration

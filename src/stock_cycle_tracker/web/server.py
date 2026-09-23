@@ -50,6 +50,17 @@ async def health():
     return {"ok": True}
 
 
+@app.get("/api/market-hours")
+async def market_hours():
+    """Session phase (pre/open/post/closed), next event, and effective data end."""
+    from stock_cycle_tracker.data.market_hours import MarketHoursService
+
+    service = MarketHoursService()
+    info = service.phase()
+    info["effective_data_end"] = service.effective_data_end().isoformat()
+    return info
+
+
 @app.get("/api/options")
 async def options():
     return {

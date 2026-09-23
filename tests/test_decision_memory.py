@@ -410,3 +410,33 @@ def test_hold_band_frozen_and_derived_from_vol():
     assert 0.4 <= band <= 6.0
     # sqrt scaling: 4x horizon → 2x band (within clamp)
     assert hold_band_pct(summary, horizon=400) == pytest.approx(min(band * 2, 6.0), abs=0.01)
+
+
+def test_bars_mode_grading_ignores_weekend_gaps(tmp_path):
+    """In bars mode the outcome window is N candles, not N units of wall time —
+    a weekend gap consumes zero horizon."""
+    store = DecisionMemoryStore(str(tmp_path))
+    data = _candles(bars=200)  # hourly candles
+    record = _live_record(store, data, brief=_brief())
+    record.grading_mode = "bars"
+
+    horizon = record.horizon_bars
+    # Later data with a huge weekend-sized gap in the middle but enough candles.
+    later_start = data[-1].timestamp + timedelta(hours=1)
+    later = _candles(bars=horizon + 10, start=later_start, drift=0.5)
+    store.grade_pending(data + later, "BTC-USD" if record.symbol == "BTC-USD" else record.symbol, record.timeframe)
+
+    assert record.graded_at is not None
+    assert record.forward_return_pct is not None
+
+
+def test_bars_mode_not_mature_with_too_few_future_candles(tmp_path):
+    store = DecisionMemoryStore(str(tmp_path))
+    data = _candles(bars=200)
+    record = _live_record(store, data, brief=_brief())
+    record.grading_mode = "bars"
+
+    later_start = data[-1].timestamp + timedelta(hours=1)
+    later = _candles(bars=max(1, record.horizon_bars - 5), start=later_start)
+    store.grade_pending(data + later, record.symbol, record.timeframe)
+    assert record.graded_at is None  # horizon not yet filled by candles

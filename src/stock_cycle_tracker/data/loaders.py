@@ -118,6 +118,7 @@ class DataLoader:
         timeframe: Timeframe | str,
         lookback: str,
         use_cache: bool = True,
+        end: datetime | None = None,
     ) -> list[OHLCV]:
         """Fetch data and load into memory.
 
@@ -126,12 +127,15 @@ class DataLoader:
             timeframe: Candle timeframe
             lookback: Lookback period (e.g., "30d", "7w")
             use_cache: Whether to use cached data
+            end: Logical end of the data window. Defaults to now; pass a
+                MarketHoursService.effective_data_end() value so a closed
+                market doesn't invalidate fresh caches overnight.
 
         Returns:
             List of OHLCV candles
         """
         normalized_timeframe = self._normalize_timeframe(timeframe)
-        end = datetime.now()
+        end = end or datetime.now()
         start = self._parse_lookback(lookback, end)
 
         if use_cache:
