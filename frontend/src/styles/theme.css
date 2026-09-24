@@ -571,6 +571,21 @@ body {
 }
 .ind-field input:focus { border-color: var(--accent-primary); outline: none; }
 
+/* ── Market hours banner / paper confirm ─────────────────── */
+
+.market-banner {
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+  border: 1px solid var(--border-subtle); border-left-width: 3px;
+  border-radius: var(--radius-md); background: var(--bg-secondary);
+  padding: 0.45rem 0.75rem; margin-bottom: 1rem; font-size: 0.8rem;
+}
+.phase-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+.confirm-box {
+  border: 1px solid var(--warning-border); background: var(--warning-bg);
+  border-radius: var(--radius-md); padding: 0.6rem 0.7rem;
+}
+
 /* ── Scrollbars ─────────────────────────────────────────── */
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }

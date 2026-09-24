@@ -13,6 +13,11 @@ import CorrelationPanel from './components/CorrelationPanel';
 import AgentPanel from './components/AgentPanel';
 import StructureDiscoveries from './components/StructureDiscoveries';
 import DashboardSection from './components/DashboardSection';
+import MarketHoursBanner from './components/MarketHoursBanner';
+import ScanTable from './components/ScanTable';
+import WatchlistEditor from './components/WatchlistEditor';
+import PaperTradingPanel from './components/PaperTradingPanel';
+import type { ScanPayload } from './api/client';
 
 type Tab = 'legs' | 'pivots' | 'crossasset' | 'insights';
 
@@ -57,6 +62,8 @@ export default function App() {
   const [exportFiles, setExportFiles] = useState<Record<string, string>>({});
   const [exportMsg, setExportMsg] = useState('');
   const [sidebarHidden, setSidebarHidden] = useState(() => localStorage.getItem(SIDEBAR_KEY) === '1');
+  const [view, setView] = useState<'scan' | 'detail'>('scan');
+  const [scan, setScan] = useState<ScanPayload | null>(null);
   const [customizing, setCustomizing] = useState(false);
   const [layout, setLayout] = useState(loadLayout);
   const bootedRef = useRef(false);
@@ -153,6 +160,23 @@ export default function App() {
     analysisApi.result().then(res => setResult(res.data)).catch(() => {});
   }, []);
 
+  // Scan → detail navigation: run the full analysis for a chosen symbol.
+  const openSymbol = useCallback(async (symbol: string) => {
+    const cfg = configRef.current;
+    if (!cfg) return;
+    setView('detail');
+    setRunning(true);
+    setError('');
+    try {
+      const res = await analysisApi.analyze({ config: { ...cfg, symbol } });
+      setResult(res.data);
+    } catch (err) {
+      setError(apiError(err, 'Analysis failed.'));
+    } finally {
+      setRunning(false);
+    }
+  }, []);
+
   async function doExport() {
     setExportMsg('');
     setExportFiles({});
@@ -174,6 +198,7 @@ export default function App() {
   const section = useMemo(() => {
     const tables = (
       <>
+        {result && <PaperTradingPanel symbol={result.metadata.symbol} />}
         <div className="tab-bar">
           <button className={tab === 'legs' ? 'active' : ''} onClick={() => setTab('legs')}>
             Legs ({result?.legs.length ?? 0})
@@ -248,6 +273,11 @@ export default function App() {
               )}
             </span>
           )}
+          {view === 'detail' && (
+            <button className="btn btn-secondary" style={{ fontSize: '0.72rem' }} onClick={() => setView('scan')}>
+              ← Scan
+            </button>
+          )}
           {running && <span className="spinner" title="Analysis running…" />}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
@@ -313,7 +343,20 @@ export default function App() {
         <main className="main">
           {error && <div className="error-banner">{error}</div>}
 
-          {running && !result && (
+          {view === 'scan' && (
+            <>
+              <MarketHoursBanner />
+              <ScanTable scan={scan} onScan={setScan} onSelect={openSymbol} />
+              <WatchlistEditor onChanged={() => setScan(null)} />
+              <div className="card" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                Pick a preset in the sidebar (Intraday / Swing / Position), manage the watchlist,
+                and click a scanned symbol to open its full decision dashboard with the AI brief,
+                track record, chart indicators, and paper trading.
+              </div>
+            </>
+          )}
+
+          {view === 'detail' && running && !result && (
             <div className="empty-state">
               <span className="spinner" style={{ width: 24, height: 24 }} />
               <span className="empty-title">Running analysis…</span>
@@ -321,7 +364,7 @@ export default function App() {
             </div>
           )}
 
-          {!running && !result && !customizing && (
+          {view === 'detail' && !running && !result && !customizing && (
             <div className="empty-state">
               <span className="empty-icon">📈</span>
               <span className="empty-title">No analysis yet</span>
@@ -332,7 +375,7 @@ export default function App() {
             </div>
           )}
 
-          {(result || customizing) && visible.map(id => (
+          {view === 'detail' && (result || customizing) && visible.map(id => (
             <DashboardSection
               key={id}
               id={id}

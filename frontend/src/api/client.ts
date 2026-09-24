@@ -317,6 +317,86 @@ export interface Options {
   symbols: string[];
 }
 
+// ── Watchlist / scan / market hours / trading ───────────────────────
+
+export interface ScanRow {
+  symbol: string;
+  last_price: number | null;
+  action: string;
+  composite_score: number;
+  conviction: number;
+  quality: string;
+  forming_pct: number | null;
+  top_invalidation_price: number | null;
+  top_invalidation_flips: string | null;
+  summary: string;
+  last_candle: string | null;
+  stale: boolean;
+  error: string | null;
+}
+
+export interface ScanPayload {
+  rows: ScanRow[];
+  filtered: Array<Record<string, unknown>>;
+  ran_at: string | null;
+  market_phase: string;
+  duration_seconds: number;
+  note: string;
+}
+
+export interface MarketHours {
+  phase: 'pre' | 'open' | 'post' | 'closed' | string;
+  next_event: string;
+  next_event_at: string | null;
+  source: string;
+  note: string;
+  effective_data_end: string;
+}
+
+export interface TradingStatus {
+  enabled: boolean;
+  broker: string;
+  limits: Record<string, number | boolean>;
+  account?: { cash: number; equity: number; currency: string; paper: boolean };
+  positions?: Array<{ symbol: string; qty: number; avg_price: number; pnl: number }>;
+  error?: string;
+}
+
+export interface TradingPreview {
+  ok: boolean;
+  symbol?: string;
+  side?: string;
+  qty?: number;
+  refusals?: string[];
+  notes?: string[];
+  confirmation_id?: string;
+  expires_in_seconds?: number;
+}
+
+export const marketApi = {
+  hours: () => api.get<MarketHours>('/market-hours'),
+};
+
+export const watchlistApi = {
+  get: () => api.get<{ symbols: string[] }>('/watchlist'),
+  put: (symbols: string[]) => api.put<{ symbols: string[] }>('/watchlist', { symbols }),
+  reset: () => api.post<{ symbols: string[] }>('/watchlist/reset'),
+};
+
+export const scanApi = {
+  run: () => api.post<ScanPayload>('/scan', {}, { timeout: 300000 }),
+  status: () => api.get<ScanPayload & { has_result: boolean }>('/scan/status'),
+};
+
+export const tradingApi = {
+  status: () => api.get<TradingStatus>('/trading/status'),
+  preview: (symbol: string, side: 'buy' | 'sell') =>
+    api.post<TradingPreview>('/trading/preview', { symbol, side }),
+  confirm: (confirmation_id: string) =>
+    api.post<{ ok: boolean; order?: Record<string, unknown> }>('/trading/confirm', { confirmation_id }),
+  cancel: (confirmation_id: string) => api.post('/trading/cancel', { confirmation_id }),
+};
+
 export const analysisApi = {
   options: () => api.get<Options>('/options'),
   getConfig: () => api.get<AppConfig>('/config'),
