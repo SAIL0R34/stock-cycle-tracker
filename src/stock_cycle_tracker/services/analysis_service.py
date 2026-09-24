@@ -59,15 +59,23 @@ class AnalysisService:
         self,
         config: Optional[Config] = None,
         data_loader: Optional[DataLoader] = None,
+        data_end: Optional[datetime] = None,
+        use_cache: bool = False,
     ):
         """Initialize the analysis service.
 
         Args:
             config: Analysis configuration (uses defaults if None)
             data_loader: Data loader instance (creates new if None)
+            data_end: Logical end of the data window (defaults to now). Pass
+                MarketHoursService.effective_data_end() so a closed market
+                doesn't invalidate caches overnight.
+            use_cache: Let the DataLoader serve bar caches when fresh.
         """
         self.config = config or Config()
         self.data_loader = data_loader or DataLoader()
+        self.data_end = data_end
+        self.use_cache = use_cache
         self.output_fs = OutputFilesystem(self.config.output_dir)
 
     async def run_analysis(
@@ -333,7 +341,8 @@ class AnalysisService:
             symbol,
             timeframe,
             lookback,
-            use_cache=False,
+            use_cache=self.use_cache,
+            end=self.data_end,
         )
 
     async def _detect_pivots(self, data: list[OHLCV]) -> list[PivotPoint]:

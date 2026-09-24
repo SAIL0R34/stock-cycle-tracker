@@ -27,6 +27,10 @@ from stock_cycle_tracker.web.serializers import (
     serialize_result,
 )
 from stock_cycle_tracker.web.state import STATE
+from stock_cycle_tracker.watchlist.scanner import ScanService
+from stock_cycle_tracker.watchlist.store import WatchlistStore
+
+SCANNER = ScanService()
 
 logger = logging.getLogger("stock_cycle_tracker.web")
 
@@ -67,8 +71,50 @@ async def options():
         "timeframes": [t.value for t in Timeframe],
         "pivot_methods": [m.value for m in PivotMethod],
         "sources": settings.data.supported_sources,
-        "symbols": ["BTC-USD", "ETH-USD", "SOL-USD"],
+        "symbols": WatchlistStore().load(),
     }
+
+
+# ---------------------------------------------------------------------------
+# Watchlist + scanner
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/watchlist")
+async def get_watchlist():
+    return {"symbols": WatchlistStore().load()}
+
+
+class WatchlistUpdate(BaseModel):
+    symbols: list[str]
+
+
+@app.put("/api/watchlist")
+async def put_watchlist(req: WatchlistUpdate):
+    saved = WatchlistStore().save(req.symbols)
+    return {"symbols": saved}
+
+
+@app.post("/api/watchlist/reset")
+async def reset_watchlist():
+    return {"symbols": WatchlistStore().reset()}
+
+
+@app.post("/api/scan")
+async def run_scan():
+    """Scan the watchlist with the current config (decision engine per symbol)."""
+    try:
+        result = await asyncio.to_thread(lambda: asyncio.run(SCANNER.scan(STATE.config)))
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=f"Scan failed: {exc}") from exc
+    return result.to_dict()
+
+
+@app.get("/api/scan/status")
+async def scan_status():
+    if SCANNER.last_result is None:
+        return {"has_result": False}
+    return {"has_result": True, **SCANNER.last_result.to_dict()}
 
 
 @app.get("/api/config")
