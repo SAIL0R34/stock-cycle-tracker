@@ -535,6 +535,11 @@ class Config(BaseModel):
     decision_walk_forward_checkpoints: int = 12
     # "bars": grade N bars after the decision (session-safe); "wallclock": N bars of wall-time
     grading_mode: str = "bars"
+    trading_enabled: bool = False
+    trading_max_position_pct: float = 5.0
+    trading_max_daily_loss_pct: float = 3.0
+    trading_max_active_symbols: int = 8
+    trading_min_conviction: float = 0.25
     enable_decision_memory: bool = True
     enable_adaptive_decision_weights: bool = True
     decision_learning_min_samples: int = 5

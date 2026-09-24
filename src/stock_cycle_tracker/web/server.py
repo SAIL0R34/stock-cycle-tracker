@@ -27,10 +27,12 @@ from stock_cycle_tracker.web.serializers import (
     serialize_result,
 )
 from stock_cycle_tracker.web.state import STATE
+from stock_cycle_tracker.trading.service import PaperTradingService
 from stock_cycle_tracker.watchlist.scanner import ScanService
 from stock_cycle_tracker.watchlist.store import WatchlistStore
 
 SCANNER = ScanService()
+PAPER = PaperTradingService()
 
 logger = logging.getLogger("stock_cycle_tracker.web")
 
@@ -453,3 +455,47 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+# ---------------------------------------------------------------------------
+# Paper trading (preview -> explicit confirm -> Alpaca paper order)
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/trading/status")
+async def trading_status():
+    return PAPER.status(STATE.config)
+
+
+class TradingPreviewRequest(BaseModel):
+    symbol: str
+    side: str  # buy | sell
+
+
+@app.post("/api/trading/preview")
+async def trading_preview(req: TradingPreviewRequest):
+    if req.side not in {"buy", "sell"}:
+        raise HTTPException(status_code=422, detail="side must be buy or sell")
+    return PAPER.preview(STATE.config, STATE, req.symbol, req.side)
+
+
+class TradingConfirmRequest(BaseModel):
+    confirmation_id: str
+
+
+@app.post("/api/trading/confirm")
+async def trading_confirm(req: TradingConfirmRequest):
+    result = await asyncio.to_thread(PAPER.confirm, STATE.config, req.confirmation_id)
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail=result.get("error") or result)
+    return result
+
+
+@app.post("/api/trading/cancel")
+async def trading_cancel(req: TradingConfirmRequest):
+    return PAPER.cancel(req.confirmation_id)
+
+
+@app.get("/api/trading/log")
+async def trading_log(limit: int = Query(50, ge=1, le=500)):
+    return {"events": PAPER.log.tail(limit)}

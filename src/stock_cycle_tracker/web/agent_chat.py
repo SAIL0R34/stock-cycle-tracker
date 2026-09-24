@@ -328,9 +328,9 @@ TOOLS: dict[str, Tool] = {t.name: t for t in [
     Tool("update_config", _tool_update_config, True,
          "update_config(<field>=<value>, ...) — change settings, e.g. pivot_method (zigzag/fractal/fixed_window), min_move_pct, left_bars, right_bars, use_atr_filter, atr_period, atr_multiplier, enable_pattern_recognition, pattern_length, enable_spy_correlation_analysis, enable_qqq_correlation_analysis, enable_gold_correlation_analysis."),
     Tool("watchlist_add", _tool_watchlist_add, True,
-         "watchlist_add(symbols=["AAPL", ...]) — add tickers to the watchlist (validated ticker shapes only)."),
+         "watchlist_add(symbols=[\"AAPL\", ...]) — add tickers to the watchlist (validated ticker shapes only)."),
     Tool("watchlist_remove", _tool_watchlist_remove, True,
-         "watchlist_remove(symbols=["AAPL", ...]) — remove tickers from the watchlist."),
+         "watchlist_remove(symbols=[\"AAPL\", ...]) — remove tickers from the watchlist."),
     Tool("export_data", _tool_export_data, True,
          "export_data() — write the current result to CSV/JSON files in outputs/."),
 ]}
