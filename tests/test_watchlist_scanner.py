@@ -191,12 +191,12 @@ def test_scan_config_is_lighter_than_base(tmp_path):
         timeframe="1d",
         decision_walk_forward_checkpoints=12,
         enable_gold_correlation_analysis=True,
-        enable_nasdaq_correlation_analysis=True,
+        enable_qqq_correlation_analysis=True,
     )
     light = service._scan_config(base)
     assert light.decision_walk_forward_checkpoints == 4
     assert light.enable_gold_correlation_analysis is False
-    assert light.enable_nasdaq_correlation_analysis is False
+    assert light.enable_qqq_correlation_analysis is False
     assert light.enable_pattern_recognition is True       # engines stay on
     assert light.enable_decision_memory is True
 

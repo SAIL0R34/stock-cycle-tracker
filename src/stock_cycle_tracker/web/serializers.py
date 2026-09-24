@@ -81,12 +81,7 @@ def serialize_result(
         "pattern_learning": result.pattern_learning.model_dump(mode="json") if result.pattern_learning else None,
         "correlations": {
             name: insight.model_dump(mode="json")
-            for name, insight in (
-                ("gold", result.gold_correlation_insight),
-                ("nasdaq", result.nasdaq_correlation_insight),
-                ("oil", result.oil_correlation_insight),
-            )
-            if insight is not None
+            for name, insight in result.correlation_insights.items()
         },
         "structure_discoveries": [d.model_dump(mode="json") for d in result.structure_discoveries],
         "forming_leg": result.forming_leg.model_dump(mode="json") if result.forming_leg else None,

@@ -17,19 +17,19 @@ const TIMEFRAME_MINUTES: Record<string, number> = {
 
 const PRESETS: Array<{ name: string; hint: string; fields: Partial<AppConfig> }> = [
   {
-    name: 'Scalp',
-    hint: '5m chart, small swings, tight noise floor',
-    fields: { timeframe: '5m', lookback_period: '7d', min_move_pct: 0.6, left_bars: 4, right_bars: 4, use_atr_filter: true },
+    name: 'Intraday',
+    hint: '15m chart, intraday swings',
+    fields: { timeframe: '15m', lookback_period: '30d', min_move_pct: 0.35, left_bars: 4, right_bars: 4, use_atr_filter: true },
   },
   {
     name: 'Swing',
-    hint: '1h chart, standard swing detection',
-    fields: { timeframe: '1h', lookback_period: '60d', min_move_pct: 1.5, left_bars: 5, right_bars: 5, use_atr_filter: true },
+    hint: 'Daily chart, multi-day swings',
+    fields: { timeframe: '1d', lookback_period: '1y', min_move_pct: 1.5, left_bars: 5, right_bars: 5, use_atr_filter: true },
   },
   {
-    name: 'Macro',
-    hint: '1d chart, only major swings',
-    fields: { timeframe: '1d', lookback_period: '1y', min_move_pct: 5, left_bars: 5, right_bars: 5, use_atr_filter: false },
+    name: 'Position',
+    hint: 'Weekly chart, only major moves',
+    fields: { timeframe: '1w', lookback_period: '2y', min_move_pct: 4, left_bars: 5, right_bars: 5, use_atr_filter: false },
   },
 ];
 
@@ -257,27 +257,27 @@ export default function ControlPanel({ config, options, running, onChange, onRun
       )}
 
       <label className="check-row">
+        <input type="checkbox" checked={config.enable_spy_correlation_analysis}
+          onChange={(e) => onChange({ enable_spy_correlation_analysis: e.target.checked })} />
+        <span>
+          SPY correlation
+          <HelpDot>Compare the symbol with SPY (S&P 500 ETF) — is it just riding the broad market?</HelpDot>
+        </span>
+      </label>
+      <label className="check-row">
+        <input type="checkbox" checked={config.enable_qqq_correlation_analysis}
+          onChange={(e) => onChange({ enable_qqq_correlation_analysis: e.target.checked })} />
+        <span>
+          QQQ correlation
+          <HelpDot>Compare with QQQ (Nasdaq 100 ETF) — the tech-risk proxy.</HelpDot>
+        </span>
+      </label>
+      <label className="check-row">
         <input type="checkbox" checked={config.enable_gold_correlation_analysis}
           onChange={(e) => onChange({ enable_gold_correlation_analysis: e.target.checked })} />
         <span>
           Gold correlation
-          <HelpDot>Compare BTC with gold over the same window — do they move together, and who won?</HelpDot>
-        </span>
-      </label>
-      <label className="check-row">
-        <input type="checkbox" checked={config.enable_nasdaq_correlation_analysis}
-          onChange={(e) => onChange({ enable_nasdaq_correlation_analysis: e.target.checked })} />
-        <span>
-          Nasdaq correlation
-          <HelpDot>Compare BTC with the tech-heavy Nasdaq index — is BTC just riding the risk trade?</HelpDot>
-        </span>
-      </label>
-      <label className="check-row">
-        <input type="checkbox" checked={config.enable_oil_correlation_analysis}
-          onChange={(e) => onChange({ enable_oil_correlation_analysis: e.target.checked })} />
-        <span>
-          Oil correlation
-          <HelpDot>Compare BTC with crude oil futures over the same window.</HelpDot>
+          <HelpDot>Compare with gold futures — the classic safety-vs-risk gauge.</HelpDot>
         </span>
       </label>
 

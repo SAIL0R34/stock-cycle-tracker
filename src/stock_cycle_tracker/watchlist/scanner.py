@@ -109,9 +109,9 @@ class ScanService:
         overrides.update(
             {
                 "decision_walk_forward_checkpoints": min(4, base.decision_walk_forward_checkpoints),
+                "enable_spy_correlation_analysis": False,
+                "enable_qqq_correlation_analysis": False,
                 "enable_gold_correlation_analysis": False,
-                "enable_nasdaq_correlation_analysis": False,
-                "enable_oil_correlation_analysis": False,
                 "save_chart": False,
                 "save_csv": False,
             }

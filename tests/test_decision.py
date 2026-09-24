@@ -124,6 +124,6 @@ def test_walk_forward_disabled_with_zero_checkpoints():
 
 def test_optional_modules_default_on_for_visibility():
     config = Config()
-    assert config.enable_gold_correlation_analysis is True
-    assert config.enable_nasdaq_correlation_analysis is True
+    assert config.enable_spy_correlation_analysis is True
+    assert config.enable_qqq_correlation_analysis is True
     assert config.enable_decision_engine is True

@@ -256,3 +256,21 @@ before live ones (live history is irreplaceable, replay is re-seedable).
 - `legs.csv` — start/end timestamps, prices, % change, duration, direction
 - `summary.csv` / `analysis.json` — summary statistics and insights
 - `chart.html` — interactive candlestick chart with legs and pivots
+
+
+## Equities: sessions, data, and grading
+
+* **Regular-hours bars only** (default): pre/post-market prints are filtered so
+  overnight gaps stay gaps — the swing engine must never see fabricated
+  continuity across sessions. Bars are split-adjusted, fetched from Alpaca's
+  v2 API (IEX free feed by default).
+* **Rate discipline**: one shared token bucket (180 req/min) backs every
+  Alpaca call; the scanner is sequential with stagger, and its row cache is
+  keyed to the session — closed-market rescans cost zero requests.
+* **Market hours**: Alpaca calendar (daily-cached) + live clock define
+  pre/open/post/closed phases and the logical data end, so caches don't churn
+  overnight.
+* **Grading in candles**: live decisions are graded N *candles* after the
+  decision candle (`grading_mode="bars"`), so weekends and holidays consume
+  zero horizon — a Friday decision doesn't wait three calendar days for its
+  outcome window.

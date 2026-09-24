@@ -8,6 +8,7 @@ from typing import Optional
 from stock_cycle_tracker.data.loaders import DataLoader
 from stock_cycle_tracker.models import (
     AnalysisMetadata,
+    AssetCorrelationInsight,
     AnalysisResult,
     Config,
     OHLCV,
@@ -134,9 +135,6 @@ class AnalysisService:
         pattern_insight = None
         pattern_learning = None
         pattern_backtests = []
-        gold_correlation_insight = None
-        nasdaq_correlation_insight = None
-        oil_correlation_insight = None
         if self.config.enable_pattern_recognition:
             pattern_engine = PatternRecognitionEngine(self.config, self.config.output_dir)
             pattern_insight, pattern_learning, pattern_backtests = pattern_engine.analyze(
@@ -145,36 +143,22 @@ class AnalysisService:
                 timeframe=timeframe,
             )
         correlation_errors: dict[str, str] = {}
-        if self.config.enable_gold_correlation_analysis:
+        correlation_insights: dict[str, AssetCorrelationInsight] = {}
+        for key, enabled, name, symbol in (
+            ("spy", self.config.enable_spy_correlation_analysis, "S&P 500 ETF", "SPY"),
+            ("qqq", self.config.enable_qqq_correlation_analysis, "Nasdaq 100 ETF", "QQQ"),
+            ("gold", self.config.enable_gold_correlation_analysis, "Gold", "GC=F"),
+        ):
+            if not enabled:
+                continue
             try:
-                gold_correlation_insight = build_asset_correlation_insight(
-                    data=data,
-                    asset_name="Gold",
-                    asset_symbol="GC=F",
+                insight = build_asset_correlation_insight(
+                    data=data, asset_name=name, asset_symbol=symbol,
                 )
+                if insight is not None:
+                    correlation_insights[key] = insight
             except Exception as exc:  # noqa: BLE001 - surfaced to the UI
-                gold_correlation_insight = None
-                correlation_errors["gold"] = str(exc)
-        if self.config.enable_nasdaq_correlation_analysis:
-            try:
-                nasdaq_correlation_insight = build_asset_correlation_insight(
-                    data=data,
-                    asset_name="Nasdaq",
-                    asset_symbol="^IXIC",
-                )
-            except Exception as exc:  # noqa: BLE001 - surfaced to the UI
-                nasdaq_correlation_insight = None
-                correlation_errors["nasdaq"] = str(exc)
-        if self.config.enable_oil_correlation_analysis:
-            try:
-                oil_correlation_insight = build_asset_correlation_insight(
-                    data=data,
-                    asset_name="Oil",
-                    asset_symbol="CL=F",
-                )
-            except Exception as exc:  # noqa: BLE001 - surfaced to the UI
-                oil_correlation_insight = None
-                correlation_errors["oil"] = str(exc)
+                correlation_errors[key] = str(exc)
 
         start_date = data[0].timestamp or datetime.now()
         end_date = data[-1].timestamp or datetime.now()
@@ -202,9 +186,7 @@ class AnalysisService:
             pattern_insight=pattern_insight,
             pattern_learning=pattern_learning,
             pattern_backtests=pattern_backtests,
-            gold_correlation_insight=gold_correlation_insight,
-            nasdaq_correlation_insight=nasdaq_correlation_insight,
-            oil_correlation_insight=oil_correlation_insight,
+            correlation_insights=correlation_insights,
             structure_discoveries=structure_discoveries,
             forming_leg=forming_leg,
             correlation_errors=correlation_errors,
@@ -243,14 +225,7 @@ class AnalysisService:
             pattern_confidence=pattern.adaptive_confidence if pattern else 0.0,
             pattern_horizon_edge=horizon_edge,
             pattern_matches=pattern.matches_used if pattern else 0,
-            correlations={
-                name: insight
-                for name, insight in (
-                    ("gold", result.gold_correlation_insight),
-                    ("nasdaq", result.nasdaq_correlation_insight),
-                )
-                if insight is not None
-            },
+            correlations=dict(result.correlation_insights),
             intelligence_quality=intelligence.get("quality", {}).get("label", "moderate"),
             intelligence_conflicts=intelligence.get("conflicts", []),
         )

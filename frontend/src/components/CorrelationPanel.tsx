@@ -111,7 +111,7 @@ export default function CorrelationPanel({
       <ModulePlaceholder
         title="Cross-asset correlations"
         hint="Compare BTC with gold and the Nasdaq over the same window: rebased price comparison, rolling correlation, beta, and relative strength."
-        fields={{ enable_gold_correlation_analysis: true, enable_nasdaq_correlation_analysis: true }}
+        fields={{ enable_spy_correlation_analysis: true, enable_qqq_correlation_analysis: true }}
         onEnable={enableAndRun}
         busy={enabling}
       />
@@ -162,13 +162,13 @@ export default function CorrelationPanel({
           </div>
         ))}
 
-        {!names.includes('oil') && !errors['oil'] && (
+        {!names.includes('gold') && !errors['gold'] && (
           <button
             className="btn btn-secondary" style={{ fontSize: '0.72rem', marginTop: '0.5rem' }}
             disabled={enabling}
-            onClick={() => enableAndRun({ enable_oil_correlation_analysis: true })}
+            onClick={() => enableAndRun({ enable_gold_correlation_analysis: true })}
           >
-            {enabling ? 'Running…' : '+ Add oil (CL=F)'}
+            {enabling ? 'Running…' : '+ Add gold (GC=F)'}
           </button>
         )}
       </div>

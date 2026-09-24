@@ -491,9 +491,7 @@ class AnalysisResult(BaseModel):
     pattern_insight: PatternInsight | None = None
     pattern_learning: PatternLearningSummary | None = None
     pattern_backtests: list[PatternBacktestRecord] = Field(default_factory=list)
-    gold_correlation_insight: AssetCorrelationInsight | None = None
-    nasdaq_correlation_insight: AssetCorrelationInsight | None = None
-    oil_correlation_insight: AssetCorrelationInsight | None = None
+    correlation_insights: dict[str, AssetCorrelationInsight] = Field(default_factory=dict)
     structure_discoveries: list[StructureDiscovery] = Field(default_factory=list)
     forming_leg: SwingLeg | None = None
     decision_brief: DecisionBrief | None = None
@@ -541,9 +539,9 @@ class Config(BaseModel):
     enable_adaptive_decision_weights: bool = True
     decision_learning_min_samples: int = 5
     decision_memory_max_records: int = 1000
-    enable_gold_correlation_analysis: bool = True
-    enable_nasdaq_correlation_analysis: bool = True
-    enable_oil_correlation_analysis: bool = False
+    enable_spy_correlation_analysis: bool = True
+    enable_qqq_correlation_analysis: bool = True
+    enable_gold_correlation_analysis: bool = False
 
     @field_validator("lookback_period")
     @classmethod

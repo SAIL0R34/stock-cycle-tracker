@@ -209,21 +209,6 @@ class JSONWriter:
                 record.model_dump(mode="json")
                 for record in result.pattern_backtests
             ],
-            "gold_correlation_insight": (
-                result.gold_correlation_insight.model_dump(mode="json")
-                if result.gold_correlation_insight
-                else None
-            ),
-            "nasdaq_correlation_insight": (
-                result.nasdaq_correlation_insight.model_dump(mode="json")
-                if result.nasdaq_correlation_insight
-                else None
-            ),
-            "oil_correlation_insight": (
-                result.oil_correlation_insight.model_dump(mode="json")
-                if result.oil_correlation_insight
-                else None
-            ),
             "structure_discoveries": [
                 discovery.model_dump(mode="json")
                 for discovery in result.structure_discoveries

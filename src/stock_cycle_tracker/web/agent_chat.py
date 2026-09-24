@@ -159,16 +159,25 @@ def _tool_get_insights(args: dict, ctx: ChatContext) -> dict:
         out["pattern"] = result.pattern_insight.model_dump(mode="json")
     if result.pattern_learning:
         out["pattern_learning"] = result.pattern_learning.model_dump(mode="json")
-    for name, insight in (
-        ("gold", result.gold_correlation_insight),
-        ("nasdaq", result.nasdaq_correlation_insight),
-        ("oil", result.oil_correlation_insight),
-    ):
-        if insight is not None:
-            out[f"{name}_correlation"] = insight.model_dump(mode="json")
+    for name, insight in result.correlation_insights.items():
+        out[f"{name}_correlation"] = insight.model_dump(mode="json")
     if not out:
         return _ok(note="No optional insights are enabled. Pattern recognition / correlations can be turned on via update_config.")
     return _ok(**out)
+
+
+def _tool_get_scan(args: dict, ctx: ChatContext) -> dict:
+    from stock_cycle_tracker.web.server import SCANNER
+
+    if SCANNER.last_result is None:
+        return _ok(note="No scan has been run yet — the dashboard runs one on the Scan page, or the user can trigger it there.")
+    return _ok(scan=SCANNER.last_result.to_dict())
+
+
+def _tool_get_market_hours(args: dict, ctx: ChatContext) -> dict:
+    from stock_cycle_tracker.data.market_hours import MarketHoursService
+
+    return _ok(market_hours=MarketHoursService().phase())
 
 
 def _tool_get_decision(args: dict, ctx: ChatContext) -> dict:
@@ -245,6 +254,36 @@ def _tool_update_config(args: dict, ctx: ChatContext) -> dict:
     )
 
 
+def _tool_watchlist_add(args: dict, ctx: ChatContext) -> dict:
+    from stock_cycle_tracker.watchlist.store import WatchlistStore, normalize_symbol
+
+    raw = args.get("symbols")
+    if isinstance(raw, str):
+        raw = [raw]
+    symbols = [normalize_symbol(x) for x in (raw or [])]
+    symbols = [x for x in symbols if x]
+    if not symbols:
+        return _err("Provide one or more valid ticker symbols (e.g. AAPL, BRK.B).")
+    store = WatchlistStore()
+    saved = store.save(store.load() + symbols)
+    return _ok(added=symbols, watchlist=saved, note="Watchlist updated; re-run the scan to analyze the new names.")
+
+
+def _tool_watchlist_remove(args: dict, ctx: ChatContext) -> dict:
+    from stock_cycle_tracker.watchlist.store import WatchlistStore, normalize_symbol
+
+    raw = args.get("symbols")
+    if isinstance(raw, str):
+        raw = [raw]
+    symbols = {normalize_symbol(x) for x in (raw or [])}
+    symbols.discard("")
+    if not symbols:
+        return _err("Provide one or more valid ticker symbols to remove.")
+    store = WatchlistStore()
+    saved = store.save([s for s in store.load() if s not in symbols])
+    return _ok(removed=sorted(symbols), watchlist=saved)
+
+
 def _tool_export_data(args: dict, ctx: ChatContext) -> dict:
     try:
         files = ctx.state.export_current()
@@ -278,12 +317,20 @@ TOOLS: dict[str, Tool] = {t.name: t for t in [
          "get_config() — the full current configuration."),
     Tool("get_structure_discoveries", _tool_get_structure_discoveries, False,
          "get_structure_discoveries(type?) — ranked trend/range, break/change, support and resistance discoveries with evidence, anchors, confidence, and invalidation."),
+    Tool("get_scan", _tool_get_scan, False,
+         "get_scan() — the latest watchlist scan: per-symbol decision action, score, conviction, invalidations, ranked by |score|."),
+    Tool("get_market_hours", _tool_get_market_hours, False,
+         "get_market_hours() — whether the US equity market is open/closed and when the next session event is."),
     Tool("get_decision", _tool_get_decision, False,
          "get_decision() — the auditable decision brief: action band, composite score, conviction, weighted evidence contributions, invalidation levels, and walk-forward replay stats."),
     Tool("run_analysis", _tool_run_analysis, True,
          f"run_analysis(symbol?, timeframe?, lookback?) — fetch fresh data and run the full pipeline. timeframe one of {'/'.join(_TIMEFRAMES)}; lookback like 30d/12w/6m/1y."),
     Tool("update_config", _tool_update_config, True,
-         "update_config(<field>=<value>, ...) — change settings, e.g. pivot_method (zigzag/fractal/fixed_window), min_move_pct, left_bars, right_bars, use_atr_filter, atr_period, atr_multiplier, enable_pattern_recognition, pattern_length, enable_gold_correlation_analysis, enable_nasdaq_correlation_analysis, enable_oil_correlation_analysis."),
+         "update_config(<field>=<value>, ...) — change settings, e.g. pivot_method (zigzag/fractal/fixed_window), min_move_pct, left_bars, right_bars, use_atr_filter, atr_period, atr_multiplier, enable_pattern_recognition, pattern_length, enable_spy_correlation_analysis, enable_qqq_correlation_analysis, enable_gold_correlation_analysis."),
+    Tool("watchlist_add", _tool_watchlist_add, True,
+         "watchlist_add(symbols=["AAPL", ...]) — add tickers to the watchlist (validated ticker shapes only)."),
+    Tool("watchlist_remove", _tool_watchlist_remove, True,
+         "watchlist_remove(symbols=["AAPL", ...]) — remove tickers from the watchlist."),
     Tool("export_data", _tool_export_data, True,
          "export_data() — write the current result to CSV/JSON files in outputs/."),
 ]}

@@ -304,9 +304,9 @@ export interface AppConfig {
   decision_learning_min_samples: number;
   decision_memory_max_records: number;
   enable_moon_phase_analysis: boolean;
+  enable_spy_correlation_analysis: boolean;
+  enable_qqq_correlation_analysis: boolean;
   enable_gold_correlation_analysis: boolean;
-  enable_nasdaq_correlation_analysis: boolean;
-  enable_oil_correlation_analysis: boolean;
   [key: string]: unknown;
 }
 

@@ -243,7 +243,7 @@ def _forming_leg(inputs: DecisionInputs) -> tuple[float, str, str]:
 
 def _cross_asset(inputs: DecisionInputs) -> tuple[float, str, str]:
     usable = []
-    for name in ("nasdaq", "gold"):
+    for name in ("qqq", "spy"):
         corr = inputs.correlations.get(name)
         if corr is None or corr.return_correlation is None:
             continue
@@ -259,7 +259,7 @@ def _cross_asset(inputs: DecisionInputs) -> tuple[float, str, str]:
         f"{name}: rel {c.latest_relative_strength_pct:+.1f} · corr {c.return_correlation:+.2f}"
         for name, _, c in usable
     )
-    rationale = "BTC relative performance vs correlated macro assets"
+    rationale = "Relative performance vs correlated benchmark ETFs"
     return value, rationale, detail
 
 
