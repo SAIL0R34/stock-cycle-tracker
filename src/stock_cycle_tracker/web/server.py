@@ -417,47 +417,6 @@ async def agent_chat_endpoint(req: AgentChatRequest):
 
 
 # ---------------------------------------------------------------------------
-# Serve React frontend static files in production (MUST be last)
-# ---------------------------------------------------------------------------
-
-FRONTEND_DIST = Path(__file__).resolve().parents[3] / "frontend" / "dist"
-if FRONTEND_DIST.exists():
-    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="assets")
-
-    @app.get("/{full_path:path}")
-    async def serve_react_app(full_path: str):
-        """Serve the SPA — index.html for all non-API routes."""
-        index = FRONTEND_DIST / "index.html"
-        candidate = (FRONTEND_DIST / full_path).resolve()
-        try:
-            candidate.relative_to(FRONTEND_DIST.resolve())
-        except ValueError:
-            return FileResponse(index)
-        if candidate.is_file():
-            return FileResponse(candidate)
-        return FileResponse(index)
-
-
-def main() -> None:
-    import os
-
-    import uvicorn
-
-    logging.basicConfig(level=logging.INFO)
-    # Bind localhost by default; set SCT_HOST=0.0.0.0 (and SCT_PORT) to
-    # expose the dashboard on the LAN.
-    uvicorn.run(
-        app,
-        host=os.environ.get("SCT_HOST", "127.0.0.1"),
-        port=int(os.environ.get("SCT_PORT", "8011")),
-    )
-
-
-if __name__ == "__main__":
-    main()
-
-
-# ---------------------------------------------------------------------------
 # Paper trading (preview -> explicit confirm -> Alpaca paper order)
 # ---------------------------------------------------------------------------
 
@@ -499,3 +458,45 @@ async def trading_cancel(req: TradingConfirmRequest):
 @app.get("/api/trading/log")
 async def trading_log(limit: int = Query(50, ge=1, le=500)):
     return {"events": PAPER.log.tail(limit)}
+
+
+# ---------------------------------------------------------------------------
+# Serve React frontend static files in production (MUST be last)
+# ---------------------------------------------------------------------------
+
+FRONTEND_DIST = Path(__file__).resolve().parents[3] / "frontend" / "dist"
+if FRONTEND_DIST.exists():
+    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_react_app(full_path: str):
+        """Serve the SPA — index.html for all non-API routes."""
+        index = FRONTEND_DIST / "index.html"
+        candidate = (FRONTEND_DIST / full_path).resolve()
+        try:
+            candidate.relative_to(FRONTEND_DIST.resolve())
+        except ValueError:
+            return FileResponse(index)
+        if candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(index)
+
+
+def main() -> None:
+    import os
+
+    import uvicorn
+
+    logging.basicConfig(level=logging.INFO)
+    # Bind localhost by default; set SCT_HOST=0.0.0.0 (and SCT_PORT) to
+    # expose the dashboard on the LAN.
+    uvicorn.run(
+        app,
+        host=os.environ.get("SCT_HOST", "127.0.0.1"),
+        port=int(os.environ.get("SCT_PORT", "8011")),
+    )
+
+
+if __name__ == "__main__":
+    main()
+
