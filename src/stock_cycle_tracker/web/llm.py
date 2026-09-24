@@ -100,6 +100,15 @@ class LLMClient:
         self.timeout = timeout
         self._resolved_model: str | None = None
 
+    def _effective(self) -> tuple[str, str]:
+        """Store overrides win over the import-time default so Settings-UI
+        edits apply on the next call without a restart."""
+        from stock_cycle_tracker.web.secrets_store import secrets_store
+
+        base = secrets_store.get("llm_base_url") or self.base_url
+        model = secrets_store.get("llm_model") or self.model
+        return base.rstrip("/"), model
+
     def resolve_model(self) -> str:
         """Return a concrete model id.
 
@@ -108,8 +117,9 @@ class LLMClient:
         is cached; a gateway without /models falls back to the literal
         "auto" (some servers accept it).
         """
-        if self.model != "auto":
-            return self.model
+        model = self._effective()[1]
+        if model != "auto":
+            return model
         if self._resolved_model:
             return self._resolved_model
         try:
@@ -134,6 +144,7 @@ class LLMClient:
         temperature: float = 0.2,
         max_tokens: int = 900,
     ) -> str:
+        base_url, _ = self._effective()
         body = {
             "model": self.resolve_model(),
             "messages": messages,
@@ -142,7 +153,7 @@ class LLMClient:
             "chat_template_kwargs": {"enable_thinking": False},
         }
         request = Request(
-            f"{self.base_url}/chat/completions",
+            f"{base_url}/chat/completions",
             data=json.dumps(body).encode("utf-8"),
             headers={
                 "Authorization": f"Bearer {self.api_key}",
@@ -157,7 +168,7 @@ class LLMClient:
             detail = exc.read().decode("utf-8", errors="replace")[:400]
             raise RuntimeError(f"LLM returned HTTP {exc.code}: {detail}") from exc
         except URLError as exc:
-            raise RuntimeError(f"LLM is unreachable at {self.base_url}: {exc}") from exc
+            raise RuntimeError(f"LLM is unreachable at {base_url}: {exc}") from exc
 
         choices = payload.get("choices", [])
         if not choices:

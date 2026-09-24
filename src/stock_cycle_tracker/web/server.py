@@ -28,6 +28,7 @@ from stock_cycle_tracker.web.serializers import (
 )
 from stock_cycle_tracker.web.state import STATE
 from stock_cycle_tracker.trading.service import PaperTradingService
+from stock_cycle_tracker.web.secrets_store import secrets_store
 from stock_cycle_tracker.watchlist.scanner import ScanService
 from stock_cycle_tracker.watchlist.store import WatchlistStore
 
@@ -414,6 +415,64 @@ async def agent_chat_endpoint(req: AgentChatRequest):
     if result.get("type") == "message":
         _persist_chat_message("assistant", result.get("content", ""))
     return result
+
+
+# ---------------------------------------------------------------------------
+# Settings (in-app credential entry — no .env editing required)
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/settings")
+async def get_settings():
+    """Client-safe settings view: configured flags + masked hints only."""
+    return secrets_store.status()
+
+
+class SettingsUpdate(BaseModel):
+    alpaca_key_id: str = ""
+    alpaca_secret_key: str = ""
+    alpaca_data_feed: str = ""
+    llm_base_url: str = ""
+    llm_model: str = ""
+    clear_alpaca: bool = False
+
+
+@app.post("/api/settings")
+async def post_settings(req: SettingsUpdate):
+    """Store non-empty fields locally (outputs/app_secrets.json, gitignored).
+    Credentials resolve on the next request — no restart needed."""
+    if req.clear_alpaca:
+        secrets_store.clear({"alpaca_api_key_id", "alpaca_api_secret_key", "alpaca_data_feed"})
+    secrets_store.update(
+        {
+            "alpaca_api_key_id": req.alpaca_key_id,
+            "alpaca_api_secret_key": req.alpaca_secret_key,
+            "alpaca_data_feed": req.alpaca_data_feed,
+            "llm_base_url": req.llm_base_url,
+            "llm_model": req.llm_model,
+        }
+    )
+    return secrets_store.status()
+
+
+@app.post("/api/settings/test")
+async def test_settings():
+    """Verify the stored Alpaca paper credentials with one account call."""
+    from stock_cycle_tracker.data.alpaca_client import AlpacaHTTPClient
+
+    client = AlpacaHTTPClient()
+    if not client.has_credentials:
+        return {"ok": False, "detail": "No Alpaca keys configured yet."}
+    try:
+        account = await asyncio.to_thread(client.get_account)
+        return {
+            "ok": True,
+            "detail": (
+                f"Connected to paper account · cash ${float(account.get('cash', 0)):,.2f}"
+            ),
+        }
+    except Exception as exc:  # noqa: BLE001 - client scrubs secrets already
+        return {"ok": False, "detail": str(exc)}
 
 
 # ---------------------------------------------------------------------------

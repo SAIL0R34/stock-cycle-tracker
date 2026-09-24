@@ -17,6 +17,7 @@ import MarketHoursBanner from './components/MarketHoursBanner';
 import ScanTable from './components/ScanTable';
 import WatchlistEditor from './components/WatchlistEditor';
 import PaperTradingPanel from './components/PaperTradingPanel';
+import SettingsOverlay from './components/SettingsOverlay';
 import type { ScanPayload } from './api/client';
 
 type Tab = 'legs' | 'pivots' | 'crossasset' | 'insights';
@@ -63,6 +64,7 @@ export default function App() {
   const [exportMsg, setExportMsg] = useState('');
   const [sidebarHidden, setSidebarHidden] = useState(() => localStorage.getItem(SIDEBAR_KEY) === '1');
   const [view, setView] = useState<'scan' | 'detail'>('scan');
+  const [showSettings, setShowSettings] = useState(false);
   const [scan, setScan] = useState<ScanPayload | null>(null);
   const [customizing, setCustomizing] = useState(false);
   const [layout, setLayout] = useState(loadLayout);
@@ -304,6 +306,10 @@ export default function App() {
           >
             {customizing ? '✓ Done' : '⠿ Customize'}
           </button>
+          <button className="btn btn-secondary" style={{ fontSize: '0.78rem' }} title="API keys & gateway settings"
+            onClick={() => setShowSettings(true)}>
+            ⚙
+          </button>
           <button className="btn btn-secondary" onClick={doExport} disabled={!result}>
             Export CSV/JSON
           </button>
@@ -406,6 +412,8 @@ export default function App() {
           )}
         </main>
       </div>
+
+      {showSettings && <SettingsOverlay onClose={() => setShowSettings(false)} />}
 
       <AgentPanel onDataChanged={refreshFromServer} />
     </div>

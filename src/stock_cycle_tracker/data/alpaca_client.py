@@ -91,16 +91,39 @@ class AlpacaHTTPClient:
         requests_per_minute: int = 180,
         timeout: float = 20.0,
     ):
-        self.api_key_id = api_key_id or os.environ.get("ALPACA_API_KEY_ID", "")
-        self.api_secret_key = api_secret_key or os.environ.get("ALPACA_API_SECRET_KEY", "")
-        self.data_feed = (
-            data_feed
-            or os.environ.get("ALPACA_DATA_FEED", "iex")
-        ).lower()
+        self._fixed_key_id = api_key_id
+        self._fixed_secret = api_secret_key
+        self._fixed_feed = data_feed
         self.timeout = timeout
         self.bucket = TokenBucket(requests_per_minute)
+        self._resolve_credentials()
 
     # ── plumbing ────────────────────────────────────────────────────
+
+    def _resolve_credentials(self) -> None:
+        """Credentials resolve per-request: explicit args > environment/.env >
+        the Settings-UI store — so keys entered in the app take effect on the
+        very next call, without a restart."""
+        from stock_cycle_tracker.web.secrets_store import secrets_store
+
+        self.api_key_id = (
+            self._fixed_key_id
+            or os.environ.get("ALPACA_API_KEY_ID")
+            or secrets_store.get("alpaca_api_key_id")
+            or ""
+        )
+        self.api_secret_key = (
+            self._fixed_secret
+            or os.environ.get("ALPACA_API_SECRET_KEY")
+            or secrets_store.get("alpaca_api_secret_key")
+            or ""
+        )
+        self.data_feed = (
+            self._fixed_feed
+            or os.environ.get("ALPACA_DATA_FEED")
+            or secrets_store.get("alpaca_data_feed")
+            or "iex"
+        ).lower()
 
     @property
     def has_credentials(self) -> bool:
@@ -121,6 +144,7 @@ class AlpacaHTTPClient:
         body: Optional[dict[str, Any]] = None,
         retry_on_429: bool = True,
     ) -> Any:
+        self._resolve_credentials()  # pick up Settings-UI changes immediately
         if params:
             url = f"{url}?{urlencode(params)}"
         headers = {
