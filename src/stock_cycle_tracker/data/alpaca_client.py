@@ -227,6 +227,14 @@ class AlpacaHTTPClient:
     def get_account(self) -> dict[str, Any]:
         return self._request("GET", f"{TRADING_HOST}/v2/account")
 
+    def get_open_orders(self) -> list[dict[str, Any]]:
+        """Open orders with nested bracket legs included."""
+        payload = self._request(
+            "GET", f"{TRADING_HOST}/v2/orders",
+            params={"status": "open", "nested": "true", "limit": 50},
+        )
+        return payload if isinstance(payload, list) else []
+
     def get_positions(self) -> list[dict[str, Any]]:
         payload = self._request("GET", f"{TRADING_HOST}/v2/positions")
         return payload if isinstance(payload, list) else []

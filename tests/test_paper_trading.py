@@ -218,3 +218,106 @@ def test_trade_log_records_events(tmp_path):
     events = service.log.tail()
     kinds = [e["event"] for e in events]
     assert "preview" in kinds and "order_submitted" in kinds
+
+
+# ── chart bracket orders ───────────────────────────────────────────────
+
+
+def test_bracket_payload_limit_and_market():
+    client = _cred_client()
+    broker = AlpacaPaperBrokerClient(client)
+    with patch.object(client, "submit_order", return_value={"id": "b1"}) as so:
+        broker.place_bracket_order("AAPL", "buy", 5, stop_price=90.0, limit_price=100.0)
+    body = so.call_args[0][0]
+    assert body["order_class"] == "bracket"
+    assert body["type"] == "limit" and body["limit_price"] == 100.0
+    assert body["stop_loss"] == {"stop_price": 90.0}
+
+    with patch.object(client, "submit_order", return_value={"id": "b2"}) as so:
+        broker.place_bracket_order("AAPL", "buy", 5, stop_price=90.0)  # market entry
+    body = so.call_args[0][0]
+    assert body["type"] == "market" and "limit_price" not in body
+
+
+def test_bracket_rejects_bad_stops():
+    broker = AlpacaPaperBrokerClient(_cred_client())
+    import pytest as _pytest
+    with _pytest.raises(ValueError):
+        broker.place_bracket_order("AAPL", "buy", 5, stop_price=0)
+    with _pytest.raises(ValueError):
+        broker.place_bracket_order("AAPL", "side", 5, stop_price=90)
+
+
+def test_check_bracket_stop_must_be_on_losing_side():
+    # buy with stop above entry → refused
+    d = pre_trade_check  # noqa: F841 (silence lints in patch diffs)
+    from stock_cycle_tracker.trading.risk import check_bracket as cb
+    decision = cb("AAPL", "buy", stop_price=110.0, entry_price=100.0,
+                  brief=_brief(), account=_account(), positions=[])
+    assert not decision.allowed and any("BELOW" in r for r in decision.refusals)
+
+    decision = cb("AAPL", "buy", stop_price=99.9, entry_price=100.0,
+                  brief=_brief(), account=_account(), positions=[])
+    assert not decision.allowed and any("too tight" in r for r in decision.refusals)
+
+    decision = cb("AAPL", "buy", stop_price=97.0, entry_price=100.0,
+                  brief=_brief(), account=_account(), positions=[])
+    assert decision.allowed and decision.qty == 5.0
+    assert any("risk $" in n for n in decision.notes)
+
+
+def test_check_bracket_notional_cap():
+    from stock_cycle_tracker.trading.risk import check_bracket as cb, RiskLimits
+    decision = cb("AAPL", "buy", stop_price=97.0, entry_price=100.0,
+                  brief=_brief(), account=_account(cash=1000.0), positions=[],
+                  qty=20)  # 20 × 100 = $2000 vs $50 cap (5% of 1000)
+    assert not decision.allowed and any("position cap" in r for r in decision.refusals)
+
+
+def test_suggest_qty_whole_shares():
+    from stock_cycle_tracker.trading.risk import suggest_qty
+    assert suggest_qty(100.0, 10000.0, 5.0) == 5
+    assert suggest_qty(33.33, 100.0, 5.0) == 0
+
+
+def test_preview_order_and_confirm_bracket_branch(tmp_path):
+    service, client = _service(tmp_path)
+    config = Config(trading_enabled=True)
+    state = _state_with_brief("AAPL", action="invest")
+    with patch.object(client, "get_account", return_value=_account()), \
+         patch.object(client, "get_positions", return_value=[]):
+        preview = service.preview_order(config, state, "AAPL", "buy",
+                                        stop_price=97.0, entry_price=100.0)
+    assert preview["ok"] and preview["kind"] == "bracket" and preview["qty"] == 5.0
+    assert preview["entry_type"] == "limit"
+
+    with patch.object(client, "get_account", return_value=_account()), \
+         patch.object(client, "get_positions", return_value=[]), \
+         patch.object(client, "submit_order", return_value={"id": "br1", "status": "held_for_review"}) as so:
+        result = service.confirm(config, preview["confirmation_id"])
+    assert result["ok"] and result["order"]["id"] == "br1"
+    body = so.call_args[0][0]
+    assert body["order_class"] == "bracket" and body["stop_loss"]["stop_price"] == 97.0
+
+
+def test_open_lines_maps_bracket_orders(tmp_path):
+    service, client = _service(tmp_path)
+    config = Config(trading_enabled=True)
+    orders = [{
+        "id": "p1", "symbol": "AAPL", "side": "buy", "qty": "5",
+        "order_class": "bracket", "type": "limit", "limit_price": "100.0", "status": "held",
+        "legs": [{"id": "l1", "stop_price": "97.0"}],
+    }]
+    positions = [{"symbol": "MSFT", "qty": "3", "avg_entry_price": "420.5", "unrealized_pl": "12.3"}]
+    with patch.object(client, "get_open_orders", return_value=orders), \
+         patch.object(client, "get_positions", return_value=positions):
+        payload = service.open_lines(config)
+    kinds = [(l["kind"], l.get("price")) for l in payload["lines"]]
+    assert ("entry", 100.0) in kinds and ("stop", 97.0) in kinds
+    assert payload["positions"][0]["symbol"] == "MSFT"
+    assert payload["positions"][0]["price"] == 420.5
+
+
+def test_disabled_open_lines_empty(tmp_path):
+    service, _ = _service(tmp_path, enabled=False)
+    assert service.open_lines(Config(trading_enabled=False))["lines"] == []

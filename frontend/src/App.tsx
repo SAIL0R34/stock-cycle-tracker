@@ -132,6 +132,7 @@ export default function App() {
   const run = useCallback(async () => {
     const cfg = configRef.current;
     if (!cfg) return;
+    setView('detail'); // running a symbol opens its dashboard
     setRunning(true);
     setError('');
     try {

@@ -615,6 +615,26 @@ body {
   color: #b8e6c8 !important;
 }
 
+/* ── Chart trade dock ────────────────────────────────────── */
+
+.trade-dock-anchor {
+  position: absolute; top: 8px; right: 12px; z-index: 50;
+}
+.trade-dock {
+  width: 250px; background: var(--bg-secondary);
+  border: 1px solid var(--accent-primary);
+  border-radius: var(--radius-md); box-shadow: var(--shadow-float);
+  padding: 0.6rem 0.7rem 0.7rem;
+}
+.trade-dock-row { display: flex; align-items: center; gap: 0.45rem; margin-bottom: 0.45rem; }
+.trade-dock-risk {
+  display: flex; gap: 0.7rem; align-items: baseline; flex-wrap: wrap;
+  font-size: 0.7rem; color: var(--text-secondary);
+  border-top: 1px solid var(--border-subtle); padding-top: 0.4rem;
+}
+.btn-buy { background: var(--up); border-color: var(--up); color: #08130c; font-weight: 700; }
+.btn-sell { background: var(--down); border-color: var(--down); color: #fff; font-weight: 700; }
+
 /* ── Scrollbars ─────────────────────────────────────────── */
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }

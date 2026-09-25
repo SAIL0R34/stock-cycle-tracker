@@ -29,6 +29,22 @@ class BrokerClient(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
+    def place_bracket_order(
+        self,
+        symbol: str,
+        side: str,
+        qty: float,
+        stop_price: float,
+        limit_price: Optional[float] = None,
+        time_in_force: str = "day",
+    ) -> dict[str, Any]:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def get_open_orders(self) -> list[dict[str, Any]]:
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def get_positions(self) -> list[dict[str, Any]]:
         raise NotImplementedError
 
@@ -54,6 +70,12 @@ class DisabledBrokerClient(BrokerClient):
 
     def place_market_order(self, symbol, side, qty, time_in_force="day"):
         self._refuse()
+
+    def place_bracket_order(self, symbol, side, qty, stop_price, limit_price=None, time_in_force="day"):
+        self._refuse()
+
+    def get_open_orders(self):
+        return []
 
     def get_positions(self):
         return []
@@ -91,6 +113,33 @@ class AlpacaPaperBrokerClient(BrokerClient):
                 "time_in_force": time_in_force,
             }
         )
+
+    def place_bracket_order(
+        self, symbol, side, qty, stop_price, limit_price=None, time_in_force="day"
+    ) -> dict[str, Any]:
+        """Entry (limit at `limit_price`, else market) with an attached
+        stop-loss leg — Alpaca `order_class=bracket`. Paper account only."""
+        if side not in {"buy", "sell"}:
+            raise ValueError(f"side must be buy or sell, got {side}")
+        if qty <= 0:
+            raise ValueError("qty must be positive")
+        if stop_price <= 0:
+            raise ValueError("stop_price must be positive")
+        body: dict[str, Any] = {
+            "symbol": symbol.upper(),
+            "qty": round(float(qty), 4),
+            "side": side,
+            "type": "limit" if limit_price else "market",
+            "time_in_force": time_in_force,
+            "order_class": "bracket",
+            "stop_loss": {"stop_price": round(float(stop_price), 2)},
+        }
+        if limit_price:
+            body["limit_price"] = round(float(limit_price), 2)
+        return self.client.submit_order(body)
+
+    def get_open_orders(self) -> list[dict[str, Any]]:
+        return self.client.get_open_orders()
 
     def get_positions(self) -> list[dict[str, Any]]:
         return self.client.get_positions()

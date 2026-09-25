@@ -388,7 +388,36 @@ export const scanApi = {
   status: () => api.get<ScanPayload & { has_result: boolean }>('/scan/status'),
 };
 
+export interface ChartOrderPreview extends TradingPreview {
+  kind?: string;
+  entry_price?: number | null;
+  stop_price?: number;
+  entry_type?: string;
+}
+
+export interface TradingOrderLine {
+  kind: 'entry' | 'stop';
+  symbol: string;
+  side: string;
+  qty: number | string;
+  price: number | null;
+  label: string;
+  order_id: string | null;
+}
+
+export interface TradingPositionLine {
+  kind: 'position';
+  symbol: string;
+  qty: number;
+  price: number;
+  pnl: number;
+}
+
 export const tradingApi = {
+  previewOrder: (body: { symbol: string; side: 'buy' | 'sell'; stop_price: number; entry_price?: number | null; qty?: number | null }) =>
+    api.post<ChartOrderPreview>('/trading/preview-order', body),
+  orders: () => api.get<{ lines: TradingOrderLine[]; positions: TradingPositionLine[]; error?: string }>('/trading/orders'),
+
   status: () => api.get<TradingStatus>('/trading/status'),
   preview: (symbol: string, side: 'buy' | 'sell') =>
     api.post<TradingPreview>('/trading/preview', { symbol, side }),

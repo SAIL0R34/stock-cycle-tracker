@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AnalysisResult } from '../api/client';
 import HelpDot from './HelpDot';
+import TradeDock, { type DockState } from './TradeDock';
+import { tradingApi } from '../api/client';
+import type { TradingOrderLine, TradingPositionLine } from '../api/client';
 import { bollinger, donchian, ema, sma, vwap } from '../lib/indicators';
 
 const COLORS = {
@@ -75,12 +78,55 @@ export default function PriceChart({ result }: { result: AnalysisResult }) {
   });
   const [indicators, setIndicators] = useState<IndicatorsConfig>(loadIndicators);
   const [showIndicators, setShowIndicators] = useState(false);
+  const [tradeMode, setTradeMode] = useState(false);
+  const [dock, setDock] = useState<DockState | null>(null);
+  const [paperCash, setPaperCash] = useState<number | null>(null);
+  const [orderLines, setOrderLines] = useState<TradingOrderLine[]>([]);
+  const [positionLines, setPositionLines] = useState<TradingPositionLine[]>([]);
 
   const toggle = (key: Overlay) => setOn(prev => ({ ...prev, [key]: !prev[key] }));
+
+  const lastPrice = result.forming_leg?.end_price ?? result.legs.at(-1)?.end_price ?? 0;
+
+  const nearestFlipStop = (side: 'buy' | 'sell', entry: number): number | null => {
+    const levels = (result.decision_brief?.invalidations || []).map(i => i.price);
+    const candidates = side === 'buy'
+      ? levels.filter(p => p < entry)
+      : levels.filter(p => p > entry);
+    if (!candidates.length) return null;
+    return Math.max(...(side === 'buy' ? candidates : [0])) || Math.min(...candidates);
+  };
+
+  const openDockAt = (price: number) => {
+    setDock(prev => {
+      const side: 'buy' | 'sell' = prev?.side ?? 'buy';
+      const stop = nearestFlipStop(side, price)
+        ?? (side === 'buy' ? Math.round(price * 0.97 * 100) / 100 : Math.round(price * 1.03 * 100) / 100);
+      return { side, entryPrice: Math.round(price * 100) / 100, stopPrice: stop, qty: null };
+    });
+  };
 
   useEffect(() => {
     localStorage.setItem(INDICATORS_KEY, JSON.stringify(indicators));
   }, [indicators]);
+
+  const refreshOrderLines = () => {
+    tradingApi.orders().then(res => {
+      setOrderLines((res.data.lines || []).filter(l => l.symbol === result.metadata.symbol));
+      setPositionLines((res.data.positions || []).filter(l => l.symbol === result.metadata.symbol));
+    }).catch(() => {});
+  };
+
+  useEffect(() => {
+    if (!tradeMode) return;
+    tradingApi.status().then(res => {
+      setPaperCash(res.data.account?.cash ?? null);
+    }).catch(() => {});
+    refreshOrderLines();
+    const t = setInterval(refreshOrderLines, 30000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tradeMode, result.metadata.symbol]);
 
   const patchIndicator = <K extends keyof IndicatorsConfig>(key: K, fields: Partial<IndicatorsConfig[K]>) => {
     setIndicators(prev => ({ ...prev, [key]: { ...prev[key], ...fields } }));
@@ -260,6 +306,60 @@ export default function PriceChart({ result }: { result: AnalysisResult }) {
       });
     }
 
+    // Persistent paper order/position lines (from the broker)
+    for (const line of orderLines) {
+      if (line.price == null) continue;
+      const color = line.kind === 'stop' ? 'var(--down)' : 'var(--accent-secondary)';
+      shapes.push({
+        type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: line.price, y1: line.price,
+        line: { color, width: 1.4, dash: 'dash' },
+        opacity: 0.85,
+      });
+      data.push({
+        type: 'scatter', mode: 'text', x: [candles.at(-1)?.t], y: [line.price],
+        text: [line.label], textposition: 'top right',
+        textfont: { size: 9, color }, showlegend: false, hoverinfo: 'skip',
+      });
+    }
+    for (const pos of positionLines) {
+      shapes.push({
+        type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: pos.price, y1: pos.price,
+        line: { color: '#9b59b6', width: 1.4 },
+        opacity: 0.8,
+      });
+      data.push({
+        type: 'scatter', mode: 'text', x: [candles.at(-1)?.t], y: [pos.price],
+        text: [`${pos.qty} @ ${pos.price.toFixed(2)} (${pos.pnl >= 0 ? '+' : ''}${pos.pnl.toFixed(0)})`],
+        textposition: 'bottom right', textfont: { size: 9, color: '#9b59b6' },
+        showlegend: false, hoverinfo: 'skip',
+      });
+    }
+
+    // Editable dock lines: entry (blue) + stop (red). Their shape indices sit
+    // after every other shape; dragging them syncs back into the dock state.
+    const baseShapeCount = shapes.length;
+    if (dock) {
+      if (dock.entryPrice != null) {
+        shapes.push({
+          type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y',
+          y0: dock.entryPrice, y1: dock.entryPrice,
+          line: { color: 'var(--accent-secondary)', width: 2, dash: 'dot' }, editable: true,
+          opacity: 0.95,
+        });
+      }
+      shapes.push({
+        type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y',
+        y0: dock.stopPrice, y1: dock.stopPrice,
+        line: { color: 'var(--down)', width: 2, dash: 'dot' }, editable: true,
+        opacity: 0.95,
+      });
+      data.push({
+        type: 'scatter', mode: 'text', x: [candles.at(-1)?.t], y: [dock.stopPrice],
+        text: [`STOP ${dock.stopPrice.toFixed(2)}`], textposition: 'top right',
+        textfont: { size: 9, color: 'var(--down)' }, showlegend: false, hoverinfo: 'skip',
+      });
+    }
+
     const layout = {
       margin: { l: 55, r: 15, t: 48, b: 30 },
       height: 520,
@@ -296,10 +396,47 @@ export default function PriceChart({ result }: { result: AnalysisResult }) {
 
     window.Plotly.react(node, data, layout, { responsive: true, displaylogo: false });
 
-    return () => {
-      if (node) window.Plotly.purge(node);
+    // Trade mode: click sets the limit entry; dragging the dock lines syncs.
+    const onClick = (eventData: { points?: Array<{ y?: number; x?: string; pointIndex?: number }> }) => {
+      if (!tradeMode) return;
+      const point = eventData.points?.[0];
+      let price = typeof point?.y === 'number' ? point.y : NaN;
+      if (!Number.isFinite(price) && point?.x) {
+        const candle = candles.find(c => c.t === point.x);
+        if (candle) price = candle.c;
+      }
+      if (Number.isFinite(price)) openDockAt(price);
     };
-  }, [result, on, indicators]);
+    const onRelayout = (eventData: Record<string, unknown>) => {
+      if (!dock) return;
+      for (const [key, value] of Object.entries(eventData)) {
+        const m = key.match(/^shapes\[(\d+)\]\.y0$/);
+        if (!m) continue;
+        const idx = baseShapeCount + Number(m[1]) - (dock.entryPrice != null ? 0 : 1);
+        const y = Number(value);
+        if (!Number.isFinite(y)) continue;
+        if (dock.entryPrice != null && idx === baseShapeCount) {
+          setDock(d => (d ? { ...d, entryPrice: y } : d));
+        } else {
+          setDock(d => (d ? { ...d, stopPrice: y } : d));
+        }
+      }
+    };
+    const plot = node as unknown as {
+      on: (event: string, fn: (d: never) => void) => void;
+      removeAllListeners?: (event: string) => void;
+    };
+    plot.on('plotly_click', onClick as never);
+    plot.on('plotly_relayout', onRelayout as never);
+
+    return () => {
+      if (node) {
+        plot.removeAllListeners?.('plotly_click');
+        plot.removeAllListeners?.('plotly_relayout');
+        window.Plotly.purge(node);
+      }
+    };
+  }, [result, on, indicators, dock, tradeMode, orderLines, positionLines]);
 
   const fl = result.forming_leg;
   const activeIndicators = [
@@ -327,6 +464,18 @@ export default function PriceChart({ result }: { result: AnalysisResult }) {
           ))}
           <span className="chart-toggle-wrap">
             <button
+              className={`chart-toggle${tradeMode ? ' active' : ''}`}
+              onClick={() => { setTradeMode(!tradeMode); if (!tradeMode) setDock(null); }}
+              title="Click the chart to place a paper bracket order with a stop"
+            >⇅ Trade</button>
+            <HelpDot>
+              TradingView-style order entry: toggle Trade, then click on the chart where you want
+              to enter — a limit order with a draggable stop-loss line appears. Everything is
+              simulated money on your Alpaca paper account, gated by the risk engine.
+            </HelpDot>
+          </span>
+          <span className="chart-toggle-wrap">
+            <button
               className={`chart-toggle${activeIndicators.length ? ' active' : ''}`}
               onClick={() => setShowIndicators(!showIndicators)}
             >
@@ -342,6 +491,11 @@ export default function PriceChart({ result }: { result: AnalysisResult }) {
           </span>
         )}
       </div>
+      {tradeMode && !dock && (
+        <div style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', padding: '0.25rem 0.5rem' }}>
+          Click on the chart to set an entry price…
+        </div>
+      )}
       {result.candles_resampled && (
         <div style={{ fontSize: '0.68rem', color: 'var(--text-faint)', padding: '0.2rem 0.5rem' }}>
           Candles resampled for display — pivots and legs remain exact.
@@ -414,7 +568,23 @@ export default function PriceChart({ result }: { result: AnalysisResult }) {
           </div>
         </div>
       )}
-      <div ref={el} />
+      <div style={{ position: 'relative' }}>
+        {dock && (
+          <div className="trade-dock-anchor">
+            <TradeDock
+              symbol={result.metadata.symbol}
+              lastPrice={lastPrice}
+              defaultStop={nearestFlipStop(dock.side, dock.entryPrice ?? lastPrice)}
+              cash={paperCash}
+              state={dock}
+              onStateChange={(patch) => setDock(prev => (prev ? { ...prev, ...patch } : prev))}
+              onClose={() => setDock(null)}
+              onPlaced={refreshOrderLines}
+            />
+          </div>
+        )}
+        <div ref={el} />
+      </div>
     </div>
   );
 }

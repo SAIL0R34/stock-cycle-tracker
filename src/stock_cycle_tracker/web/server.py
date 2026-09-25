@@ -514,6 +514,31 @@ async def trading_cancel(req: TradingConfirmRequest):
     return PAPER.cancel(req.confirmation_id)
 
 
+class ChartOrderPreviewRequest(BaseModel):
+    symbol: str
+    side: str
+    stop_price: float
+    entry_price: float | None = None
+    qty: int | None = None
+
+
+@app.post("/api/trading/preview-order")
+async def trading_preview_order(req: ChartOrderPreviewRequest):
+    """Chart-placed bracket preview (limit/market entry + attached stop)."""
+    if req.side not in {"buy", "sell"}:
+        raise HTTPException(status_code=422, detail="side must be buy or sell")
+    return await asyncio.to_thread(
+        PAPER.preview_order, STATE.config, STATE,
+        req.symbol, req.side, req.stop_price, req.entry_price, req.qty,
+    )
+
+
+@app.get("/api/trading/orders")
+async def trading_orders():
+    """Open paper orders + positions rendered as chart lines."""
+    return await asyncio.to_thread(PAPER.open_lines, STATE.config)
+
+
 @app.get("/api/trading/log")
 async def trading_log(limit: int = Query(50, ge=1, le=500)):
     return {"events": PAPER.log.tail(limit)}
