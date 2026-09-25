@@ -368,3 +368,45 @@ def test_agent_place_chart_order_tool_gates_and_executes(tmp_path, monkeypatch):
             )
         assert out.get("ok")
         assert so.call_args[0][0]["stop_loss"]["stop_price"] == 91.0
+
+
+def test_bracket_payload_includes_take_profit_leg():
+    client = _cred_client()
+    broker = AlpacaPaperBrokerClient(client)
+    with patch.object(client, "submit_order", return_value={"id": "oco1"}) as so:
+        broker.place_bracket_order("AAPL", "buy", 5, stop_price=95.0,
+                                    limit_price=100.0, take_profit_price=110.0)
+    body = so.call_args[0][0]
+    assert body["take_profit"] == {"limit_price": 110.0}
+    assert body["stop_loss"] == {"stop_price": 95.0}
+
+
+def test_check_bracket_take_profit_side_and_r():
+    from stock_cycle_tracker.trading.risk import check_bracket as cb
+    # TP below entry on a buy → refused
+    d = cb("AAPL", "buy", stop_price=95.0, entry_price=100.0, take_profit_price=98.0,
+           brief=_brief(), account=_account(), positions=[])
+    assert not d.allowed and any("ABOVE" in r for r in d.refusals)
+
+    # Valid TP → R-multiple in notes (10 / 5 = 2R)
+    d = cb("AAPL", "buy", stop_price=95.0, entry_price=100.0, take_profit_price=110.0,
+           brief=_brief(), account=_account(), positions=[])
+    assert d.allowed
+    assert any("2.00R" in n for n in d.notes)
+
+
+def test_preview_order_carries_take_profit_to_broker(tmp_path):
+    service, client = _service(tmp_path)
+    config = Config(trading_enabled=True)
+    state = _state_with_brief("AAPL", action="invest")
+    with patch.object(client, "get_account", return_value=_account()), \
+         patch.object(client, "get_positions", return_value=[]), \
+         patch.object(client, "submit_order", return_value={"id": "oco2"}) as so:
+        preview = service.preview_order(config, state, "AAPL", "buy",
+                                        stop_price=95.0, entry_price=100.0,
+                                        take_profit_price=110.0)
+        assert preview["ok"] and preview["take_profit_price"] == 110.0
+        result = service.confirm(config, preview["confirmation_id"])
+    assert result["ok"]
+    body = so.call_args[0][0]
+    assert body["take_profit"] == {"limit_price": 110.0}

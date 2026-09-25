@@ -36,6 +36,7 @@ class BrokerClient(abc.ABC):
         qty: float,
         stop_price: float,
         limit_price: Optional[float] = None,
+        take_profit_price: Optional[float] = None,
         time_in_force: str = "day",
     ) -> dict[str, Any]:
         raise NotImplementedError
@@ -71,7 +72,7 @@ class DisabledBrokerClient(BrokerClient):
     def place_market_order(self, symbol, side, qty, time_in_force="day"):
         self._refuse()
 
-    def place_bracket_order(self, symbol, side, qty, stop_price, limit_price=None, time_in_force="day"):
+    def place_bracket_order(self, symbol, side, qty, stop_price, limit_price=None, take_profit_price=None, time_in_force="day"):
         self._refuse()
 
     def get_open_orders(self):
@@ -115,10 +116,11 @@ class AlpacaPaperBrokerClient(BrokerClient):
         )
 
     def place_bracket_order(
-        self, symbol, side, qty, stop_price, limit_price=None, time_in_force="day"
+        self, symbol, side, qty, stop_price, limit_price=None, take_profit_price=None, time_in_force="day"
     ) -> dict[str, Any]:
         """Entry (limit at `limit_price`, else market) with an attached
-        stop-loss leg — Alpaca `order_class=bracket`. Paper account only."""
+        stop-loss leg and optional take-profit leg (full OCO once filled)
+        — Alpaca `order_class=bracket`. Paper account only."""
         if side not in {"buy", "sell"}:
             raise ValueError(f"side must be buy or sell, got {side}")
         if qty <= 0:
@@ -136,6 +138,8 @@ class AlpacaPaperBrokerClient(BrokerClient):
         }
         if limit_price:
             body["limit_price"] = round(float(limit_price), 2)
+        if take_profit_price:
+            body["take_profit"] = {"limit_price": round(float(take_profit_price), 2)}
         return self.client.submit_order(body)
 
     def get_open_orders(self) -> list[dict[str, Any]]:

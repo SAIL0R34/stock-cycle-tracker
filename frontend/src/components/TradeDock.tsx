@@ -17,6 +17,7 @@ export interface DockState {
   side: 'buy' | 'sell';
   entryPrice: number | null; // null = market
   stopPrice: number;
+  takeProfitPrice: number | null; // null = no TP leg
   qty: number | null;        // null = auto
 }
 
@@ -33,11 +34,13 @@ export default function TradeDock({
   onPlaced: () => void;
 }) {
   const { side, entryPrice, stopPrice, qty } = state;
+  const takeProfitPrice = state.takeProfitPrice;
   const useLimit = entryPrice !== null;
   const setSide = (v: 'buy' | 'sell') => onStateChange({ side: v });
   const setEntryPrice = (v: number | null) => onStateChange({ entryPrice: v });
   const setStopPrice = (v: number) => onStateChange({ stopPrice: v });
   const setQty = (v: number | null) => onStateChange({ qty: v });
+  const setTakeProfitPrice = (v: number | null) => onStateChange({ takeProfitPrice: v });
   const setUseLimit = (limit: boolean) => onStateChange({ entryPrice: limit ? (entryPrice ?? lastPrice) : null });
   const [preview, setPreview] = useState<ChartOrderPreview | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -60,6 +63,7 @@ export default function TradeDock({
         stop_price: stopPrice,
         entry_price: useLimit ? entryPrice : null,
         qty,
+        take_profit_price: takeProfitPrice ?? undefined,
       });
       setPreview(res.data);
       if (res.data.ok && res.data.confirmation_id) {
@@ -78,7 +82,7 @@ export default function TradeDock({
     setBusy(true);
     try {
       await tradingApi.confirm(confirmId);
-      setMessage(`Bracket order submitted: ${side} ${qty ?? ''} ${symbol} · stop $${stopPrice.toFixed(2)}`);
+      setMessage(`Bracket order submitted: ${side} ${qty ?? ''} ${symbol} · stop $${stopPrice.toFixed(2)}${takeProfitPrice != null ? ` · target $${takeProfitPrice.toFixed(2)}` : ''}`);
       setConfirmId(null);
       setPreview(null);
       onPlaced();
@@ -147,6 +151,22 @@ export default function TradeDock({
         )}
       </div>
 
+      {/* take profit */}
+      <div className="trade-dock-row">
+        <span className="ind-field" style={{ color: 'var(--up)' }}>Target</span>
+        <input
+          className="input" style={{ width: '92px', fontSize: '0.8rem', textAlign: 'right', color: 'var(--up)' }}
+          type="number" step="0.01" placeholder="none"
+          value={takeProfitPrice ?? ''}
+          onChange={(e) => setTakeProfitPrice(e.target.value ? Number(e.target.value) : null)}
+        />
+        {takeProfitPrice != null && entryPrice != null && stopPrice < entryPrice && (
+          <span className="muted" style={{ fontSize: '0.64rem' }}>
+            {((Math.abs(takeProfitPrice - entryPrice)) / Math.max(entryPrice - stopPrice, 1e-9)).toFixed(1)}R
+          </span>
+        )}
+      </div>
+
       {/* qty */}
       <div className="trade-dock-row">
         <span className="ind-field">Qty</span>
@@ -186,6 +206,7 @@ export default function TradeDock({
           <div style={{ fontSize: '0.75rem' }}>
             <strong>Confirm bracket</strong> — {side} {qty} {symbol}
             {' '}@ {useLimit ? `$${effectiveEntry.toFixed(2)} limit` : 'market'} · stop ${stopPrice.toFixed(2)}
+            {takeProfitPrice != null ? ` · target $${takeProfitPrice.toFixed(2)}` : ''}
             {preview?.notes?.length ? <div className="muted" style={{ fontSize: '0.66rem' }}>{preview.notes.join(' · ')}</div> : null}
           </div>
           <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem' }}>

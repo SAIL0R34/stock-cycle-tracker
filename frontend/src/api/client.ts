@@ -445,6 +445,7 @@ export interface ChartOrderPreview extends TradingPreview {
   kind?: string;
   entry_price?: number | null;
   stop_price?: number;
+  take_profit_price?: number | null;
   entry_type?: string;
 }
 
@@ -467,7 +468,7 @@ export interface TradingPositionLine {
 }
 
 export const tradingApi = {
-  previewOrder: (body: { symbol: string; side: 'buy' | 'sell'; stop_price: number; entry_price?: number | null; qty?: number | null }) =>
+  previewOrder: (body: { symbol: string; side: 'buy' | 'sell'; stop_price: number; entry_price?: number | null; qty?: number | null; take_profit_price?: number }) =>
     api.post<ChartOrderPreview>('/trading/preview-order', body),
   orders: () => api.get<{ lines: TradingOrderLine[]; positions: TradingPositionLine[]; error?: string }>('/trading/orders'),
 

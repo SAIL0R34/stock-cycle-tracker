@@ -140,9 +140,11 @@ class PaperTradingService:
         stop_price: float,
         entry_price: float | None = None,
         qty: int | None = None,
+        take_profit_price: float | None = None,
     ) -> dict[str, Any]:
         """Chart-placed bracket order preview: entry (limit or market) with
-        an attached stop-loss. Same single-use confirm token as market previews."""
+        an attached stop-loss and optional take-profit (full OCO once
+        filled). Same single-use confirm token as market previews."""
         symbol = symbol.upper()
         broker = self._broker(config)
         if isinstance(broker, DisabledBrokerClient):
@@ -162,6 +164,7 @@ class PaperTradingService:
         decision: RiskDecision = check_bracket(
             symbol, side, float(stop_price), entry_price, brief, account, positions,
             RiskLimits.from_config(config), qty=float(qty) if qty else None,
+            take_profit_price=float(take_profit_price) if take_profit_price else None,
         )
         payload = {
             "ok": decision.allowed,
@@ -171,6 +174,7 @@ class PaperTradingService:
             "qty": decision.qty,
             "entry_price": entry_price,
             "stop_price": float(stop_price),
+            "take_profit_price": take_profit_price,
             "entry_type": "limit" if entry_price else "market",
             "refusals": decision.refusals,
             "notes": decision.notes,
@@ -184,6 +188,7 @@ class PaperTradingService:
                 "qty": decision.qty,
                 "stop_price": float(stop_price),
                 "limit_price": entry_price,
+                "take_profit_price": float(take_profit_price) if take_profit_price else None,
                 "expires_at": time.time() + CONFIRM_TTL_SECONDS,
             }
             payload["confirmation_id"] = confirmation_id
@@ -263,6 +268,7 @@ class PaperTradingService:
                     symbol, side, qty,
                     stop_price=pending["stop_price"],
                     limit_price=pending.get("limit_price"),
+                    take_profit_price=pending.get("take_profit_price"),
                 )
                 event = "bracket_submitted"
             else:

@@ -141,6 +141,7 @@ def check_bracket(
     positions: list[dict[str, Any]],
     limits: RiskLimits | None = None,
     qty: Optional[float] = None,
+    take_profit_price: Optional[float] = None,
 ) -> RiskDecision:
     """Gate for chart-placed bracket orders (entry + attached stop).
 
@@ -206,6 +207,16 @@ def check_bracket(
     if risk_dollars > 0:
         pct_of_cash = risk_dollars / cash * 100 if cash else 0.0
         notes.append(f"risk ${risk_dollars:.2f} ({pct_of_cash:.2f}% of cash) if stopped")
+
+    # Take-profit sanity + R-multiple (reward ÷ risk).
+    if take_profit_price and effective_entry > 0:
+        if side == "buy" and take_profit_price <= effective_entry:
+            refusals.append(f"take-profit ${take_profit_price:.2f} must be ABOVE the entry for a buy")
+        if side == "sell" and take_profit_price >= effective_entry:
+            refusals.append(f"take-profit ${take_profit_price:.2f} must be BELOW the entry for a sell")
+        stop_distance = abs(effective_entry - stop_price)
+        if stop_distance > 0:
+            notes.append(f"take-profit {abs(take_profit_price - effective_entry) / stop_distance:.2f}R (reward ÷ risk)")
 
     if refusals:
         return RiskDecision(allowed=False, qty=0, refusals=refusals, notes=notes)

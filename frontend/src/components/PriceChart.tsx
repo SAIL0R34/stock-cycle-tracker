@@ -102,7 +102,16 @@ export default function PriceChart({ result }: { result: AnalysisResult }) {
       const side: 'buy' | 'sell' = prev?.side ?? 'buy';
       const stop = nearestFlipStop(side, price)
         ?? (side === 'buy' ? Math.round(price * 0.97 * 100) / 100 : Math.round(price * 1.03 * 100) / 100);
-      return { side, entryPrice: Math.round(price * 100) / 100, stopPrice: stop, qty: null };
+      // Default target at 2R (twice the stop distance, on the winning side).
+      const risk = Math.abs(price - stop);
+      const target = side === 'buy' ? price + 2 * risk : price - 2 * risk;
+      return {
+        side,
+        entryPrice: Math.round(price * 100) / 100,
+        stopPrice: stop,
+        takeProfitPrice: Math.round(target * 100) / 100,
+        qty: null,
+      };
     });
   };
 
@@ -358,6 +367,19 @@ export default function PriceChart({ result }: { result: AnalysisResult }) {
         text: [`STOP ${dock.stopPrice.toFixed(2)}`], textposition: 'top right',
         textfont: { size: 9, color: 'var(--down)' }, showlegend: false, hoverinfo: 'skip',
       });
+      if (dock.takeProfitPrice != null) {
+        shapes.push({
+          type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y',
+          y0: dock.takeProfitPrice, y1: dock.takeProfitPrice,
+          line: { color: 'var(--up)', width: 2, dash: 'dot' }, editable: true,
+          opacity: 0.95,
+        });
+        data.push({
+          type: 'scatter', mode: 'text', x: [candles.at(-1)?.t], y: [dock.takeProfitPrice],
+          text: [`TARGET ${dock.takeProfitPrice.toFixed(2)}`], textposition: 'bottom right',
+          textfont: { size: 9, color: 'var(--up)' }, showlegend: false, hoverinfo: 'skip',
+        });
+      }
     }
 
     const layout = {
@@ -417,8 +439,10 @@ export default function PriceChart({ result }: { result: AnalysisResult }) {
         if (!Number.isFinite(y)) continue;
         if (dock.entryPrice != null && idx === baseShapeCount) {
           setDock(d => (d ? { ...d, entryPrice: y } : d));
-        } else {
+        } else if (idx === baseShapeCount + (dock.entryPrice != null ? 1 : 0)) {
           setDock(d => (d ? { ...d, stopPrice: y } : d));
+        } else {
+          setDock(d => (d ? { ...d, takeProfitPrice: y } : d));
         }
       }
     };
