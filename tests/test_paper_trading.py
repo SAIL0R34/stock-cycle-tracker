@@ -321,3 +321,50 @@ def test_open_lines_maps_bracket_orders(tmp_path):
 def test_disabled_open_lines_empty(tmp_path):
     service, _ = _service(tmp_path, enabled=False)
     assert service.open_lines(Config(trading_enabled=False))["lines"] == []
+
+
+def test_agent_place_chart_order_tool_gates_and_executes(tmp_path, monkeypatch):
+    """The agent tool refuses on risk-gate failures and submits on success
+    (it already runs post-user-consent; the gate is the remaining guard)."""
+    from stock_cycle_tracker.web import agent_chat
+
+    service, client = _service(tmp_path)
+    config = Config(trading_enabled=True)
+    state = _state_with_brief("AAPL", action="invest")
+    ctx = agent_chat.ChatContext(llm=None, state=type("S", (), {"config": config, "result": state.result})())
+
+    import unittest.mock as mock
+
+    class _ServerStub:
+        PAPER = service
+
+    with mock.patch("stock_cycle_tracker.web.server.PAPER", service):
+        # 1) wrong side for the decision → refused
+        out = agent_chat._tool_place_chart_order(
+            {"symbol": "aapl", "side": "sell", "stop_price": 110}, ctx,
+        )
+        assert not out.get("ok") and "Risk gate" in out.get("error", "")
+
+        # 2) valid bracket → submitted through the token flow
+        with patch.object(client, "get_account", return_value=_account()), \
+             patch.object(client, "get_positions", return_value=[]), \
+             patch.object(client, "submit_order", return_value={"id": "ag1", "status": "held"}):
+            out = agent_chat._tool_place_chart_order(
+                {"symbol": "aapl", "side": "buy", "stop_price": 97, "limit_price": 100}, ctx,
+            )
+        assert out.get("ok") and out["order_id"] == "ag1"
+        assert "Paper bracket submitted" in out["detail"]
+
+        # 3) 'flip' stop resolves from the decision invalidation
+        from stock_cycle_tracker.models import DecisionInvalidation
+        state.result.decision_brief.invalidations = [
+            DecisionInvalidation(price=91.0, kind="structure_break", flips_toward="divest", rationale="t")
+        ]
+        with patch.object(client, "get_account", return_value=_account()), \
+             patch.object(client, "get_positions", return_value=[]), \
+             patch.object(client, "submit_order", return_value={"id": "ag2"}) as so:
+            out = agent_chat._tool_place_chart_order(
+                {"symbol": "AAPL", "side": "buy", "stop_price": "flip"}, ctx,
+            )
+        assert out.get("ok")
+        assert so.call_args[0][0]["stop_loss"]["stop_price"] == 91.0

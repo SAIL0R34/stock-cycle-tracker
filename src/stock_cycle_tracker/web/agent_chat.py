@@ -257,7 +257,7 @@ def _tool_update_config(args: dict, ctx: ChatContext) -> dict:
 
 
 def _tool_watchlist_add(args: dict, ctx: ChatContext) -> dict:
-    from stock_cycle_tracker.watchlist.store import WatchlistStore, normalize_symbol
+    from stock_cycle_tracker.watchlist.store import normalize_symbol  # noqa: F401 (shared below)
 
     raw = args.get("symbols")
     if isinstance(raw, str):
@@ -272,7 +272,7 @@ def _tool_watchlist_add(args: dict, ctx: ChatContext) -> dict:
 
 
 def _tool_watchlist_remove(args: dict, ctx: ChatContext) -> dict:
-    from stock_cycle_tracker.watchlist.store import WatchlistStore, normalize_symbol
+    from stock_cycle_tracker.watchlist.store import normalize_symbol  # noqa: F401 (shared below)
 
     raw = args.get("symbols")
     if isinstance(raw, str):
@@ -284,6 +284,66 @@ def _tool_watchlist_remove(args: dict, ctx: ChatContext) -> dict:
     store = WatchlistStore()
     saved = store.save([s for s in store.load() if s not in symbols])
     return _ok(removed=sorted(symbols), watchlist=saved)
+
+
+def _tool_place_chart_order(args: dict, ctx: ChatContext) -> dict:
+    from stock_cycle_tracker.watchlist.store import normalize_symbol
+
+    """Place a paper bracket order (entry + stop [+ take profit]).
+
+    Only runs AFTER the user confirmed this tool call in the pane, which is
+    the explicit consent step; the summary card shows side/qty/entry/stop
+    before confirmation. The risk gate still runs and refuses bad calls.
+    """
+    from stock_cycle_tracker.web.server import PAPER
+
+    symbol = normalize_symbol(str(args.get("symbol", "")))
+    if not symbol:
+        return _err("Provide a valid ticker symbol.")
+    side = str(args.get("side", "")).lower()
+    if side not in {"buy", "sell"}:
+        return _err("side must be buy or sell.")
+
+    def _price(value, name):
+        try:
+            v = float(value)
+            return v if v > 0 else None
+        except (TypeError, ValueError):
+            return None
+
+    raw_stop = str(args.get("stop_price", "")).strip()
+    if raw_stop.lower() == "flip":
+        result = ctx.state.result
+        if result and result.decision_brief and result.decision_brief.invalidations:
+            stop = result.decision_brief.invalidations[0].price
+        else:
+            return _err("No decision invalidation level available — pass an explicit stop_price.")
+    else:
+        stop = _price(raw_stop, "stop")
+        if stop is None:
+            return _err("Provide a positive stop_price (or 'flip' to use the decision invalidation level).")
+
+    entry = _price(args.get("limit_price"), "limit")
+    qty = args.get("qty")
+    qty = int(qty) if qty else None
+
+    preview = PAPER.preview_order(
+        ctx.state.config, ctx.state, symbol, side, float(stop), entry, qty,
+    )
+    if not preview.get("ok"):
+        return _err("Risk gate refused: " + "; ".join(preview.get("refusals", ["unknown"])))
+
+    confirm = PAPER.confirm(ctx.state.config, preview["confirmation_id"])
+    if not confirm.get("ok"):
+        return _err(f"Order failed: {confirm.get('error')}")
+    order = confirm.get("order", {})
+    return _ok(
+        order_id=order.get("id"), status=order.get("status"),
+        detail=f"Paper bracket submitted: {side} {int(preview['qty'])} {symbol} "
+               f"@ {'$' + format(preview.get('entry_price'), '.2f') + ' limit' if preview.get('entry_price') else 'market'}, "
+               f"stop ${stop:.2f}.",
+        notes=preview.get("notes", []),
+    )
 
 
 def _tool_export_data(args: dict, ctx: ChatContext) -> dict:
@@ -329,6 +389,8 @@ TOOLS: dict[str, Tool] = {t.name: t for t in [
          f"run_analysis(symbol?, timeframe?, lookback?) — fetch fresh data and run the full pipeline. timeframe one of {'/'.join(_TIMEFRAMES)}; lookback like 30d/12w/6m/1y."),
     Tool("update_config", _tool_update_config, True,
          "update_config(<field>=<value>, ...) — change settings, e.g. pivot_method (zigzag/fractal/fixed_window), min_move_pct, left_bars, right_bars, use_atr_filter, atr_period, atr_multiplier, enable_pattern_recognition, pattern_length, enable_spy_correlation_analysis, enable_qqq_correlation_analysis, enable_tlt_correlation_analysis, enable_btc_correlation_analysis, enable_vix_correlation_analysis, enable_dxy_correlation_analysis, enable_gold_correlation_analysis, enable_moon_phase_analysis."),
+    Tool("place_chart_order", _tool_place_chart_order, True,
+         "place_chart_order(symbol, side, stop_price, limit_price?, qty?) — submit a paper bracket order (entry + attached stop). stop_price can be a number or \"flip\" to use the decision invalidation level. Runs the risk gate; executes only after user confirmation."),
     Tool("watchlist_add", _tool_watchlist_add, True,
          "watchlist_add(symbols=[\"AAPL\", ...]) — add tickers to the watchlist (validated ticker shapes only)."),
     Tool("watchlist_remove", _tool_watchlist_remove, True,
