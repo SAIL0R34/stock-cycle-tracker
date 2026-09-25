@@ -205,3 +205,28 @@ def test_compare_feeds_reports_sip_unavailable():
         out = client.compare_feeds("AAPL", "1Hour", datetime(2026, 1, 1), datetime(2026, 1, 2))
     assert out["sip"]["error"] and "SIP" in out["sip"]["error"]
     assert "note" in out
+
+
+@pytest.mark.asyncio
+async def test_live_poller_broadcast_and_budget():
+    """The SSE poller: open market collects and broadcasts quotes."""
+    from unittest.mock import patch
+    from stock_cycle_tracker.web.live_stream import LiveQuotePoller
+
+    poller = LiveQuotePoller()
+    queue = poller.subscribe()
+
+    class _Hours:
+        def phase(self, moment=None):
+            return {"phase": "open"}
+
+    poller.hours = _Hours()
+    poller.client = AlpacaHTTPClient(api_key_id="", api_secret_key="")  # keyless → Yahoo path
+    with patch("stock_cycle_tracker.web.live_stream.fetch_yahoo_movers",
+               return_value=[{"symbol": "AAPL", "change_pct": 1.0, "last": 123.45}]):
+        quotes = await poller._collect()
+    assert quotes and quotes[0]["symbol"] == "AAPL" and quotes[0]["price"] == 123.45
+
+    poller._broadcast(quotes[0])
+    assert queue.get_nowait()["symbol"] == "AAPL"
+    poller.unsubscribe(queue)

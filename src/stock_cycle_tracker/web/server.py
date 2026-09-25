@@ -26,6 +26,7 @@ from stock_cycle_tracker.web.serializers import (
     build_insight_context,
     serialize_result,
 )
+from stock_cycle_tracker.web.live_stream import POLLER
 from stock_cycle_tracker.web.state import STATE
 from datetime import datetime
 
@@ -341,6 +342,34 @@ async def agent_status():
         "recent_events": [dict(e) for e in events],
         "history": [dict(h) for h in history],
     }
+
+
+@app.get("/api/live/stream")
+async def live_quote_stream(request: Request):
+    """SSE: live watchlist quotes while the market is open (quiet when closed)."""
+    queue = POLLER.subscribe()
+
+    async def event_generator():
+        try:
+            # Seed with the last known state so consumers paint instantly.
+            if POLLER._last:
+                yield f"data: {json.dumps({'type': 'snapshot', 'quotes': list(POLLER._last.values())})}\n\n"
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    quote = await asyncio.wait_for(queue.get(), timeout=20.0)
+                    yield f"data: {json.dumps({'type': 'quote', **quote})}\n\n"
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"
+        finally:
+            POLLER.unsubscribe(queue)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.get("/api/agent/events/stream")

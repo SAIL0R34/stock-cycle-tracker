@@ -425,6 +425,24 @@ export interface MoversPayload {
   market_phase: string;
 }
 
+export interface LiveQuote {
+  type: 'quote' | 'snapshot';
+  symbol?: string;
+  price?: number;
+  change_pct?: number;
+  source?: string;
+  quotes?: Array<{ symbol: string; price: number; change_pct?: number }>;
+}
+
+/** Subscribe to live quotes (SSE). Returns an unsubscribe function. */
+export function subscribeLiveQuotes(onQuote: (q: LiveQuote) => void): () => void {
+  const es = new EventSource('/api/live/stream');
+  es.onmessage = (e) => {
+    try { onQuote(JSON.parse(e.data)); } catch { /* ignore malformed frames */ }
+  };
+  return () => es.close();
+}
+
 export const marketApi = {
   movers: () => api.get<MoversPayload>('/movers'),
   hours: () => api.get<MarketHours>('/market-hours'),

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { AnalysisResult, AppConfig, Options } from './api/client';
 import { analysisApi, scanApi, marketApi } from './api/client';
 import type { MoverRow } from './api/client';
+import { subscribeLiveQuotes } from './api/client';
 import { apiError } from './lib/apiError';
 import ControlPanel from './components/ControlPanel';
 import PriceChart from './components/PriceChart';
@@ -99,6 +100,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [scan, setScan] = useState<ScanPayload | null>(null);
   const [movers, setMovers] = useState<MoverRow[] | null>(null);
+  const [livePrices, setLivePrices] = useState<Record<string, number>>({});
   const lastScanAt = useRef(0);
   const scanInFlight = useRef(false);
   const onScanArrived = useCallback((payload: ScanPayload) => {
@@ -173,6 +175,21 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Live quotes: update the header price + tape in real time while open.
+  useEffect(() => {
+    const unsubscribe = subscribeLiveQuotes((q) => {
+      if (q.type === 'snapshot' && q.quotes) {
+        setLivePrices(Object.fromEntries(q.quotes.map(x => [x.symbol, x.price])));
+      } else if (q.type === 'quote' && q.symbol && q.price != null) {
+        setLivePrices(prev => ({ ...prev, [q.symbol!]: q.price! }));
+        setMovers(prev => (prev || []).map(m =>
+          m.symbol === q.symbol && q.price != null ? { ...m, last: q.price } : m,
+        ));
+      }
+    });
+    return unsubscribe;
+  }, []);
+
   const onConfigChange = useCallback((fields: Partial<AppConfig>) => {
     setConfig(prev => (prev ? { ...prev, ...fields } : prev));
   }, []);
@@ -242,7 +259,8 @@ export default function App() {
 
   const meta = result?.metadata;
   const forming = result?.forming_leg;
-  const lastPrice = forming?.end_price ?? result?.legs.at(-1)?.end_price;
+  const liveForSymbol = meta ? livePrices[meta.symbol] : undefined;
+  const lastPrice = liveForSymbol ?? forming?.end_price ?? result?.legs.at(-1)?.end_price;
 
   // The main column, in the user's chosen order. Rendered via a memo so the
   // section content isn't rebuilt on every customize-mode toggle.
