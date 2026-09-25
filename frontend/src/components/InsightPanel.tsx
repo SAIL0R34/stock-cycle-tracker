@@ -266,7 +266,7 @@ export default function InsightPanel({ result, onRerun }: { result: AnalysisResu
         />
       )}
 
-      <SweepCard result={result} />
+      <SweepCard />
     </div>
   );
 }
@@ -280,7 +280,7 @@ interface SweepPayload {
   note: string;
 }
 
-function SweepCard({ result }: { result: AnalysisResult }) {
+function SweepCard() {
   const [report, setReport] = useState<SweepPayload | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
