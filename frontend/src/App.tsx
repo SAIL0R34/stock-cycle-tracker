@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { AnalysisResult, AppConfig, Options } from './api/client';
-import { analysisApi } from './api/client';
+import { analysisApi, scanApi } from './api/client';
 import { apiError } from './lib/apiError';
 import ControlPanel from './components/ControlPanel';
 import PriceChart from './components/PriceChart';
@@ -18,6 +18,7 @@ import ScanTable from './components/ScanTable';
 import WatchlistEditor from './components/WatchlistEditor';
 import PaperTradingPanel from './components/PaperTradingPanel';
 import SettingsOverlay from './components/SettingsOverlay';
+import MoversTape from './components/MoversTape';
 import type { ScanPayload } from './api/client';
 
 type Tab = 'legs' | 'pivots' | 'crossasset' | 'insights';
@@ -106,6 +107,9 @@ export default function App() {
     analysisApi.options().then(res => setOptions(res.data)).catch(() => {});
     analysisApi.getConfig()
       .then(res => setConfig(res.data))
+      .catch(() => {});
+    scanApi.status()
+      .then(res => { if (res.data.has_result) setScan(res.data); })
       .catch(() => {});
     analysisApi.result()
       .then(res => setResult(res.data))
@@ -268,6 +272,7 @@ export default function App() {
           )}
           {lastPrice != null && (
             <span className="price-chip">
+              <strong style={{ marginRight: '0.35rem' }}>{meta?.symbol}</strong>
               ${lastPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               {forming && (
                 <span className={forming.percent_change >= 0 ? 'dir-up' : 'dir-down'}>
@@ -316,6 +321,8 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      <MoversTape rows={scan?.rows ?? null} onSelect={openSymbol} />
 
       {exportMsg && (
         <div className="export-strip">

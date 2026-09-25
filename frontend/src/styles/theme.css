@@ -571,6 +571,38 @@ body {
 }
 .ind-field input:focus { border-color: var(--accent-primary); outline: none; }
 
+/* ── Movers tape (ticker marquee) ────────────────────────── */
+
+.tape-strip {
+  display: flex; align-items: center; gap: 0.6rem;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+  padding: 0.28rem 1.1rem; overflow: hidden;
+}
+.tape-label {
+  display: inline-flex; align-items: center; flex-shrink: 0;
+  font-size: 0.62rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--text-faint);
+}
+.tape-viewport { flex: 1; overflow: hidden; position: relative; }
+.tape-track {
+  display: inline-flex; gap: 1.4rem; white-space: nowrap;
+  animation: tape-scroll 28s linear infinite;
+  will-change: transform;
+}
+.tape-track:hover { animation-play-state: paused; }
+@keyframes tape-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.tape-item {
+  display: inline-flex; align-items: baseline; gap: 0.4rem;
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-size: 0.74rem; color: var(--text-secondary);
+}
+.tape-item:hover strong { color: var(--accent-primary); }
+.tape-item strong { color: var(--text-primary); font-size: 0.76rem; }
+
 /* ── Market hours banner / paper confirm ─────────────────── */
 
 .market-banner {
