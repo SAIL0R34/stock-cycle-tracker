@@ -1,15 +1,15 @@
 """Tests for data loading and normalization."""
 
-import pytest
 from datetime import datetime, timedelta
 
-from stock_cycle_tracker.models import OHLCV
+import pytest
+
 from stock_cycle_tracker.data.normalization import (
-    normalize_ohlcv,
-    calculate_returns,
-    calculate_volatility,
     calculate_atr,
+    calculate_returns,
+    normalize_ohlcv,
 )
+from stock_cycle_tracker.models import OHLCV
 
 
 class TestOHLCVNormalization:

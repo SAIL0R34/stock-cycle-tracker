@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -83,9 +83,9 @@ class MarketHoursService:
     # ── phase ───────────────────────────────────────────────────────
 
     def _et(self, moment: datetime | None = None) -> datetime:
-        moment = moment or datetime.now(timezone.utc)
+        moment = moment or datetime.now(UTC)
         if moment.tzinfo is None:
-            moment = moment.replace(tzinfo=timezone.utc)
+            moment = moment.replace(tzinfo=UTC)
         return moment.astimezone(ET)
 
     def phase(self, moment: datetime | None = None) -> dict:
@@ -154,13 +154,13 @@ class MarketHoursService:
             if row and row.get("close"):
                 close_dt = datetime.fromisoformat(f"{row['date']}T{row['close']}:00").replace(tzinfo=ET)
                 if close_dt <= now_et:
-                    return close_dt.astimezone(timezone.utc).replace(tzinfo=None)
+                    return close_dt.astimezone(UTC).replace(tzinfo=None)
             # approx mode: prior weekday
             if not self.client.has_credentials and candidate.weekday() < 5:
                 close_dt = self._at(candidate, MARKET_CLOSE)
                 if close_dt <= now_et:
-                    return close_dt.astimezone(timezone.utc).replace(tzinfo=None)
-        return now_et.astimezone(timezone.utc).replace(tzinfo=None)
+                    return close_dt.astimezone(UTC).replace(tzinfo=None)
+        return now_et.astimezone(UTC).replace(tzinfo=None)
 
     def effective_data_end(self, moment: datetime | None = None) -> datetime:
         """Where a data fetch should logically end: `now` while the market is

@@ -2,7 +2,7 @@
 
 import io
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
@@ -132,7 +132,7 @@ async def test_fetcher_maps_bars_and_respects_limit():
     fetcher = _fetcher()
     # Five consecutive WEEKDAYS (Jan 2, 5, 6, 7, 8 2026) at 17:00 UTC = noon ET,
     # so the regular-hours filter keeps all of them.
-    days = [datetime(2026, 1, 2, 17, 0, tzinfo=timezone.utc) + __import__("datetime").timedelta(days=d) for d in (0, 3, 4, 5, 6)]
+    days = [datetime(2026, 1, 2, 17, 0, tzinfo=UTC) + __import__("datetime").timedelta(days=d) for d in (0, 3, 4, 5, 6)]
     bars = {"bars": [
         {"t": int(d.timestamp()), "o": 100 + i, "h": 101 + i, "l": 99 + i, "c": 100.5 + i, "v": 1000}
         for i, d in enumerate(days)
@@ -147,7 +147,7 @@ async def test_fetcher_maps_bars_and_respects_limit():
 @pytest.mark.asyncio
 async def test_fetcher_resamples_3m_from_1min():
     fetcher = _fetcher()
-    base = int(datetime(2026, 1, 7, 17, 0, tzinfo=timezone.utc).timestamp())
+    base = int(datetime(2026, 1, 7, 17, 0, tzinfo=UTC).timestamp())
     minute_bars = [
         {"t": base + i * 60, "o": 100, "h": 101, "l": 99, "c": 100, "v": 10}
         for i in range(6)
@@ -165,9 +165,9 @@ async def test_fetcher_filters_pre_and_post_market():
     # 09:15 ET (pre), 12:00 ET (session), 16:30 ET (post) on a Wednesday.
     # 2026-01-07 is a Wednesday; UTC stamps: 14:15, 17:00, 21:30
     bars = [
-        {"t": int(datetime(2026, 1, 7, 14, 15, tzinfo=timezone.utc).timestamp()), "o": 1, "h": 1, "l": 1, "c": 1, "v": 1},
-        {"t": int(datetime(2026, 1, 7, 17, 0, tzinfo=timezone.utc).timestamp()), "o": 2, "h": 2, "l": 2, "c": 2, "v": 2},
-        {"t": int(datetime(2026, 1, 7, 21, 30, tzinfo=timezone.utc).timestamp()), "o": 3, "h": 3, "l": 3, "c": 3, "v": 3},
+        {"t": int(datetime(2026, 1, 7, 14, 15, tzinfo=UTC).timestamp()), "o": 1, "h": 1, "l": 1, "c": 1, "v": 1},
+        {"t": int(datetime(2026, 1, 7, 17, 0, tzinfo=UTC).timestamp()), "o": 2, "h": 2, "l": 2, "c": 2, "v": 2},
+        {"t": int(datetime(2026, 1, 7, 21, 30, tzinfo=UTC).timestamp()), "o": 3, "h": 3, "l": 3, "c": 3, "v": 3},
     ]
     with patch.object(fetcher.client, "get_bars", return_value=bars):
         out = await fetcher.fetch_ohlcv("AAPL", Timeframe.FIVE_MINUTE, datetime(2026, 1, 7), datetime(2026, 1, 8))
@@ -179,7 +179,7 @@ async def test_fetcher_filters_pre_and_post_market():
 async def test_fetcher_tolerates_regular_hours_disabled():
     fetcher = AlpacaFetcher(client=_client(), regular_hours_only=False)
     bars = [
-        {"t": int(datetime(2026, 1, 7, 21, 30, tzinfo=timezone.utc).timestamp()), "o": 3, "h": 3, "l": 3, "c": 3, "v": 3},
+        {"t": int(datetime(2026, 1, 7, 21, 30, tzinfo=UTC).timestamp()), "o": 3, "h": 3, "l": 3, "c": 3, "v": 3},
     ]
     with patch.object(fetcher.client, "get_bars", return_value=bars):
         out = await fetcher.fetch_ohlcv("AAPL", Timeframe.FIVE_MINUTE, datetime(2026, 1, 7), datetime(2026, 1, 8))
@@ -211,6 +211,7 @@ def test_compare_feeds_reports_sip_unavailable():
 async def test_live_poller_broadcast_and_budget():
     """The SSE poller: open market collects and broadcasts quotes."""
     from unittest.mock import patch
+
     from stock_cycle_tracker.web.live_stream import LiveQuotePoller
 
     poller = LiveQuotePoller()

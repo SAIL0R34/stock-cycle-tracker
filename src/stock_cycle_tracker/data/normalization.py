@@ -1,6 +1,5 @@
 """Data normalization utilities for OHLCV data."""
 
-from typing import Optional
 
 import numpy as np
 import pandas as pd

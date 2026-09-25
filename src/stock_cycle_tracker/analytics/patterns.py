@@ -24,8 +24,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import datetime
-from pathlib import Path
 from statistics import median
 from typing import Any
 
@@ -115,7 +113,7 @@ def _sequence_similarity(reference: list[SwingLeg], candidate: list[SwingLeg]) -
         return 0.0
 
     score = 0.0
-    for ref_leg, cand_leg in zip(reference, candidate):
+    for ref_leg, cand_leg in zip(reference, candidate, strict=False):
         direction_score = 1.0 if ref_leg.direction == cand_leg.direction else 0.0
 
         ref_abs = abs(ref_leg.percent_change)

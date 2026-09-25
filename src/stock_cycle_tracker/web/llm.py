@@ -6,7 +6,6 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Optional
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -41,7 +40,7 @@ DEFAULT_API_KEY = os.environ.get("SCT_LLM_API_KEY", "EMPTY")
 DEFAULT_TIMEOUT = float(os.environ.get("SCT_LLM_TIMEOUT_SECONDS", "120"))
 
 
-def extract_json_from_response(text: str, expected_keys: Optional[set[str]] = None) -> Optional[str]:
+def extract_json_from_response(text: str, expected_keys: set[str] | None = None) -> str | None:
     """Extract the last valid JSON object from a response that may contain
     reasoning/thinking prose around it.
 

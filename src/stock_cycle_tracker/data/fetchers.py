@@ -5,10 +5,9 @@ Provides swappable data sources for OHLCV data.
 
 import abc
 import json
-from datetime import datetime, timedelta, timezone
-from typing import Optional
-from urllib.parse import urlencode
+from datetime import UTC, datetime, timedelta
 from urllib.error import HTTPError
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from stock_cycle_tracker.data.normalization import resample_ohlcv
@@ -27,7 +26,7 @@ class BaseFetcher(abc.ABC):
         timeframe: Timeframe,
         start: datetime,
         end: datetime,
-        limit: Optional[int] = None,
+        limit: int | None = None,
     ) -> list[OHLCV]:
         """Fetch OHLCV data for a symbol and timeframe.
 
@@ -61,7 +60,7 @@ class CoinbaseFetcher(BaseFetcher):
 
     name = "coinbase"
 
-    def __init__(self, api_key: Optional[str] = None, api_secret: Optional[str] = None):
+    def __init__(self, api_key: str | None = None, api_secret: str | None = None):
         """Initialize the Coinbase fetcher.
 
         Args:
@@ -78,7 +77,7 @@ class CoinbaseFetcher(BaseFetcher):
         timeframe: Timeframe,
         start: datetime,
         end: datetime,
-        limit: Optional[int] = None,
+        limit: int | None = None,
     ) -> list[OHLCV]:
         """Fetch OHLCV data from Coinbase Exchange public candles API."""
         fetch_timeframe = self._fetch_timeframe_for(timeframe)
@@ -128,7 +127,7 @@ class CoinbaseFetcher(BaseFetcher):
 
         candles = [
             OHLCV(
-                timestamp=datetime.fromtimestamp(row[0], tz=timezone.utc).replace(tzinfo=None),
+                timestamp=datetime.fromtimestamp(row[0], tz=UTC).replace(tzinfo=None),
                 low=float(row[1]),
                 high=float(row[2]),
                 open=float(row[3]),
@@ -186,9 +185,9 @@ class CoinbaseFetcher(BaseFetcher):
     def _align_timestamp(value: datetime, granularity: int, round_up: bool) -> datetime:
         """Snap timestamps to candle boundaries to keep request windows stable."""
         if value.tzinfo is None:
-            value = value.replace(tzinfo=timezone.utc)
+            value = value.replace(tzinfo=UTC)
         else:
-            value = value.astimezone(timezone.utc)
+            value = value.astimezone(UTC)
 
         epoch_seconds = int(value.timestamp())
         remainder = epoch_seconds % granularity
@@ -199,15 +198,15 @@ class CoinbaseFetcher(BaseFetcher):
         else:
             aligned = epoch_seconds - remainder
 
-        return datetime.fromtimestamp(aligned, tz=timezone.utc).replace(tzinfo=None)
+        return datetime.fromtimestamp(aligned, tz=UTC).replace(tzinfo=None)
 
     @staticmethod
     def _format_timestamp(value: datetime) -> str:
         """Format timestamps for Coinbase requests without microseconds."""
-        return value.replace(tzinfo=timezone.utc, microsecond=0).isoformat().replace("+00:00", "Z")
+        return value.replace(tzinfo=UTC, microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-def get_fetcher(source: str, api_key: Optional[str] = None, api_secret: Optional[str] = None) -> BaseFetcher:
+def get_fetcher(source: str, api_key: str | None = None, api_secret: str | None = None) -> BaseFetcher:
     """Factory function to get a fetcher by name.
 
     Args:

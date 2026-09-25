@@ -11,9 +11,8 @@ the stream goes quiet when the market is closed.
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 
 from stock_cycle_tracker.data.alpaca_client import AlpacaHTTPClient

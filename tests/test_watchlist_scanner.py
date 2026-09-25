@@ -6,9 +6,14 @@ from unittest.mock import patch
 
 import pytest
 
-from stock_cycle_tracker.models import Config, OHLCV
-from stock_cycle_tracker.watchlist.scanner import ScanRow, ScanService
-from stock_cycle_tracker.watchlist.store import DEFAULT_WATCHLIST, WatchlistStore, filter_universe, normalize_symbol
+from stock_cycle_tracker.models import OHLCV, Config
+from stock_cycle_tracker.watchlist.scanner import ScanService
+from stock_cycle_tracker.watchlist.store import (
+    DEFAULT_WATCHLIST,
+    WatchlistStore,
+    filter_universe,
+    normalize_symbol,
+)
 
 # ── store ──────────────────────────────────────────────────────────────
 
@@ -103,7 +108,9 @@ class _FakeAnalysisService:
 class _FakeResult:
     def __init__(self, symbol, data):
         from stock_cycle_tracker.models import (
-            DecisionBrief, DecisionInvalidation, SwingLeg,
+            DecisionBrief,
+            DecisionInvalidation,
+            SwingLeg,
         )
         self.raw_data = data
         self.legs = []
@@ -214,8 +221,11 @@ async def test_scan_caps_watchlist_size(tmp_path):
 
 def test_fetch_yahoo_movers_keyless_with_cache():
     """1-day % rows from the Yahoo fallback; second call hits the cache."""
+    from datetime import datetime as dt
+    from datetime import timedelta
+
     import pandas as pd
-    from datetime import datetime as dt, timedelta
+
     from stock_cycle_tracker.watchlist.scanner import fetch_yahoo_movers
 
     fetch_yahoo_movers._cache = None if hasattr(fetch_yahoo_movers, "_cache") else None
@@ -230,7 +240,6 @@ def test_fetch_yahoo_movers_keyless_with_cache():
 
     with patch("stock_cycle_tracker.analytics.cross_asset.fetch_yahoo_daily_close_series", side_effect=fake_fetch):
         # patch where it is imported in scanner (module-level import inside function)
-        import builtins
         rows = None
         import stock_cycle_tracker.watchlist.scanner as scanner_mod
         with patch.object(scanner_mod, "fetch_yahoo_movers.__wrapped__", None, create=True):

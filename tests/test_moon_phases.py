@@ -6,7 +6,7 @@ from stock_cycle_tracker.analytics.moon_phases import (
     analyze_moon_phase_correlation,
     generate_major_moon_phase_events,
 )
-from stock_cycle_tracker.models import Config, OHLCV, PivotPoint, PivotType, SwingLeg
+from stock_cycle_tracker.models import OHLCV, Config, PivotPoint, PivotType, SwingLeg
 
 
 def _make_candle(timestamp: datetime, price: float) -> OHLCV:

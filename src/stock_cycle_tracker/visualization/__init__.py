@@ -3,8 +3,8 @@
 Turns structured analysis results into interactive charts using Plotly.
 """
 
+from .annotations import add_leg_annotations, add_pivot_annotations
 from .plotly_chart import create_candlestick_chart
-from .annotations import add_pivot_annotations, add_leg_annotations
 
 try:
     from .static_chart import create_static_chart

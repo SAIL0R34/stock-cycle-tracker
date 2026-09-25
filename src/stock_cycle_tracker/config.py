@@ -1,7 +1,7 @@
 """Configuration module for Stock Cycle Tracker."""
 
-from .settings import settings, Settings, DataSettings, ChartSettings, OutputSettings
 from .models import Config, PivotMethod, PivotType, Timeframe
+from .settings import ChartSettings, DataSettings, OutputSettings, Settings, settings
 
 __all__ = [
     "settings",

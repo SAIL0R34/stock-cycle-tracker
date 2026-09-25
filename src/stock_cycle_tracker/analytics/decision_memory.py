@@ -36,20 +36,17 @@ import logging
 import sqlite3
 import threading
 from bisect import bisect_left
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from stock_cycle_tracker.models import (
-    Config,
+    OHLCV,
     DecisionBandStat,
     DecisionBrief,
-    DecisionContribution,
     DecisionGradedItem,
-    DecisionInvalidation,
     DecisionRecord,
     DecisionSourceStat,
     DecisionTrackRecord,
-    OHLCV,
     SummaryStatistics,
 )
 from stock_cycle_tracker.settings import settings
@@ -83,7 +80,7 @@ _DIVEST_ACTIONS = {"divest", "strong_divest"}
 def _to_naive_utc(value: datetime) -> datetime:
     """Normalise tz-aware/naive datetimes so comparisons never raise."""
     if value.tzinfo is not None:
-        value = value.astimezone(timezone.utc).replace(tzinfo=None)
+        value = value.astimezone(UTC).replace(tzinfo=None)
     return value
 
 
@@ -226,7 +223,7 @@ class DecisionMemoryStore:
             symbol=symbol,
             timeframe=timeframe,
             source="live",
-            logged_at=datetime.now(timezone.utc).replace(tzinfo=None),
+            logged_at=datetime.now(UTC).replace(tzinfo=None),
             candle_timestamp=candle_ts,
             last_price=brief.last_price or float(data[-1].close),
             action=brief.action,
@@ -260,7 +257,7 @@ class DecisionMemoryStore:
             symbol=symbol,
             timeframe=timeframe,
             source="replay",
-            logged_at=datetime.now(timezone.utc).replace(tzinfo=None),
+            logged_at=datetime.now(UTC).replace(tzinfo=None),
             candle_timestamp=candle_ts,
             last_price=brief.last_price or 0.0,
             action=brief.action,
@@ -384,7 +381,7 @@ def grade_record(
     zone_touched = False
     anchor = _to_naive_utc(record.candle_timestamp)
     start_index = bisect_left(timestamps, anchor)
-    for candle, ts in zip(data[start_index : exit_index + 1], timestamps[start_index : exit_index + 1]):
+    for candle, ts in zip(data[start_index : exit_index + 1], timestamps[start_index : exit_index + 1], strict=False):
         if ts <= anchor:
             continue
         for inv in record.invalidations:
@@ -421,7 +418,7 @@ def grade_record(
     record.invalidated = invalidated
     record.aligned = bool(outcome_correct) and not invalidated
     record.grade_note = note
-    record.graded_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    record.graded_at = datetime.now(UTC).replace(tzinfo=None)
     return True
 
 

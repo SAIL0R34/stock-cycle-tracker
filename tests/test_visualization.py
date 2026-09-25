@@ -1,13 +1,10 @@
 """Tests for visualization components."""
 
-import pytest
 from datetime import datetime
 from unittest.mock import MagicMock
-import plotly.graph_objects as go
 
 from stock_cycle_tracker.models import OHLCV, PivotPoint, PivotType
 from stock_cycle_tracker.visualization.plotly_chart import create_candlestick_chart
-from stock_cycle_tracker.models import StructureAnchor, StructureDiscovery
 
 
 class TestPlotlyChart:

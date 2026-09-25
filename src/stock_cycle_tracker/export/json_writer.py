@@ -3,9 +3,8 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
-from stock_cycle_tracker.models import OHLCV, PivotPoint, SwingLeg, AnalysisResult
+from stock_cycle_tracker.models import AnalysisResult, PivotPoint, SwingLeg
 from stock_cycle_tracker.settings import settings
 
 
@@ -27,7 +26,7 @@ class JSONWriter:
     def write_pivots(
         self,
         pivots: list[PivotPoint],
-        filename: Optional[str] = None,
+        filename: str | None = None,
     ) -> Path:
         """Write pivot points to JSON.
 
@@ -67,7 +66,7 @@ class JSONWriter:
     def write_legs(
         self,
         legs: list[SwingLeg],
-        filename: Optional[str] = None,
+        filename: str | None = None,
     ) -> Path:
         """Write swing legs to JSON.
 
@@ -88,23 +87,23 @@ class JSONWriter:
             "legs": [
                 {
                     "start_pivot": {
-                        "index": l.start_pivot.index,
-                        "timestamp": l.start_pivot.timestamp.isoformat(),
-                        "price": l.start_pivot.price,
-                        "pivot_type": l.start_pivot.pivot_type,
+                        "index": leg.start_pivot.index,
+                        "timestamp": leg.start_pivot.timestamp.isoformat(),
+                        "price": leg.start_pivot.price,
+                        "pivot_type": leg.start_pivot.pivot_type,
                     },
                     "end_pivot": {
-                        "index": l.end_pivot.index,
-                        "timestamp": l.end_pivot.timestamp.isoformat(),
-                        "price": l.end_pivot.price,
-                        "pivot_type": l.end_pivot.pivot_type,
+                        "index": leg.end_pivot.index,
+                        "timestamp": leg.end_pivot.timestamp.isoformat(),
+                        "price": leg.end_pivot.price,
+                        "pivot_type": leg.end_pivot.pivot_type,
                     },
-                    "percent_change": l.percent_change,
-                    "duration_seconds": l.duration_seconds,
-                    "duration_bars": l.duration_bars,
-                    "direction": l.direction,
+                    "percent_change": leg.percent_change,
+                    "duration_seconds": leg.duration_seconds,
+                    "duration_bars": leg.duration_bars,
+                    "direction": leg.direction,
                 }
-                for l in legs
+                for leg in legs
             ]
         }
 
@@ -116,7 +115,7 @@ class JSONWriter:
     def write_analysis_result(
         self,
         result: AnalysisResult,
-        filename: Optional[str] = None,
+        filename: str | None = None,
     ) -> Path:
         """Write complete analysis result to JSON.
 
@@ -161,23 +160,23 @@ class JSONWriter:
             "legs": [
                 {
                     "start_pivot": {
-                        "index": l.start_pivot.index,
-                        "timestamp": l.start_pivot.timestamp.isoformat(),
-                        "price": l.start_pivot.price,
-                        "pivot_type": l.start_pivot.pivot_type,
+                        "index": leg.start_pivot.index,
+                        "timestamp": leg.start_pivot.timestamp.isoformat(),
+                        "price": leg.start_pivot.price,
+                        "pivot_type": leg.start_pivot.pivot_type,
                     },
                     "end_pivot": {
-                        "index": l.end_pivot.index,
-                        "timestamp": l.end_pivot.timestamp.isoformat(),
-                        "price": l.end_pivot.price,
-                        "pivot_type": l.end_pivot.pivot_type,
+                        "index": leg.end_pivot.index,
+                        "timestamp": leg.end_pivot.timestamp.isoformat(),
+                        "price": leg.end_pivot.price,
+                        "pivot_type": leg.end_pivot.pivot_type,
                     },
-                    "percent_change": l.percent_change,
-                    "duration_seconds": l.duration_seconds,
-                    "duration_bars": l.duration_bars,
-                    "direction": l.direction,
+                    "percent_change": leg.percent_change,
+                    "duration_seconds": leg.duration_seconds,
+                    "duration_bars": leg.duration_bars,
+                    "direction": leg.direction,
                 }
-                for l in result.legs
+                for leg in result.legs
             ],
             "summary": {
                 "total_legs": result.summary.total_legs,

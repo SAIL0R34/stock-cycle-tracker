@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import abc
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from stock_cycle_tracker.data.alpaca_client import AlpacaHTTPClient
 
@@ -35,8 +35,8 @@ class BrokerClient(abc.ABC):
         side: str,
         qty: float,
         stop_price: float,
-        limit_price: Optional[float] = None,
-        take_profit_price: Optional[float] = None,
+        limit_price: float | None = None,
+        take_profit_price: float | None = None,
         time_in_force: str = "day",
     ) -> dict[str, Any]:
         raise NotImplementedError

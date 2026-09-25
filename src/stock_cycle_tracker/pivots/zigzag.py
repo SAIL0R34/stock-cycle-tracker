@@ -18,9 +18,8 @@ alternate by construction, and each pivot carries the index of the candle
 that confirmed it (``confirmation_candle_index``).
 """
 
-from typing import Optional
 
-from stock_cycle_tracker.models import OHLCV, PivotPoint, PivotType, Config
+from stock_cycle_tracker.models import OHLCV, Config, PivotPoint, PivotType
 from stock_cycle_tracker.pivots.detector import BasePivotDetector
 
 
@@ -72,7 +71,7 @@ class ZigZagDetector(BasePivotDetector):
 
         pivots: list[PivotPoint] = []
         # direction of the forming leg: "up" (last pivot = low) / "down" / None (seeding)
-        direction: Optional[str] = None
+        direction: str | None = None
         ext_high_idx, ext_high = 0, data[0].high
         ext_low_idx, ext_low = 0, data[0].low
 
@@ -143,7 +142,7 @@ class ZigZagDetector(BasePivotDetector):
     def _reversal_threshold(
         self,
         index: int,
-        atr_values: Optional[list[Optional[float]]],
+        atr_values: list[float | None] | None,
         reference_price: float,
     ) -> float:
         """Reversal threshold in percent, optionally ATR-adaptive."""
@@ -173,7 +172,7 @@ class ZigZagDetector(BasePivotDetector):
             right_bars=self.right_bars,
         )
 
-    def _calculate_atr(self, data: list[OHLCV]) -> list[Optional[float]]:
+    def _calculate_atr(self, data: list[OHLCV]) -> list[float | None]:
         """Calculate simple ATR values (None until the period warms up)."""
         if len(data) < self.atr_period + 1:
             return [None] * len(data)
@@ -185,7 +184,7 @@ class ZigZagDetector(BasePivotDetector):
             low_close = abs(data[i].low - data[i - 1].close)
             tr_values.append(max(high_low, high_close, low_close))
 
-        atr_values: list[Optional[float]] = []
+        atr_values: list[float | None] = []
         for i in range(len(data)):
             if i <= self.atr_period:
                 atr_values.append(None)

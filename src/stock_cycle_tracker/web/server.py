@@ -8,8 +8,9 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, StreamingResponse
@@ -17,24 +18,22 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from stock_cycle_tracker.analytics.intelligence import build_market_intelligence
+from stock_cycle_tracker.analytics.sweep import run_parameter_sweep
 from stock_cycle_tracker.models import PivotMethod, Timeframe
 from stock_cycle_tracker.settings import settings
+from stock_cycle_tracker.trading.service import PaperTradingService
+from stock_cycle_tracker.watchlist.scanner import ScanService, fetch_yahoo_movers
+from stock_cycle_tracker.watchlist.store import WatchlistStore
 from stock_cycle_tracker.web import agent_chat, agent_db
+from stock_cycle_tracker.web.live_stream import POLLER
 from stock_cycle_tracker.web.llm import LLMClient
+from stock_cycle_tracker.web.secrets_store import secrets_store
 from stock_cycle_tracker.web.serializers import (
     MAX_CANDLES_DEFAULT,
     build_insight_context,
     serialize_result,
 )
-from stock_cycle_tracker.web.live_stream import POLLER
 from stock_cycle_tracker.web.state import STATE
-from datetime import datetime
-
-from stock_cycle_tracker.analytics.sweep import run_parameter_sweep
-from stock_cycle_tracker.trading.service import PaperTradingService
-from stock_cycle_tracker.web.secrets_store import secrets_store
-from stock_cycle_tracker.watchlist.scanner import ScanService, fetch_yahoo_movers
-from stock_cycle_tracker.watchlist.store import WatchlistStore
 
 SCANNER = ScanService()
 MAX_TAPE_SYMBOLS = 12
@@ -51,10 +50,10 @@ llm = LLMClient()
 # ---------------------------------------------------------------------------
 
 class AnalyzeRequest(BaseModel):
-    symbol: Optional[str] = None
-    timeframe: Optional[str] = None
-    lookback: Optional[str] = None
-    config: Optional[dict[str, Any]] = None  # partial Config overrides
+    symbol: str | None = None
+    timeframe: str | None = None
+    lookback: str | None = None
+    config: dict[str, Any] | None = None  # partial Config overrides
 
 
 @app.get("/api/health")
@@ -360,7 +359,7 @@ async def live_quote_stream(request: Request):
                 try:
                     quote = await asyncio.wait_for(queue.get(), timeout=20.0)
                     yield f"data: {json.dumps({'type': 'quote', **quote})}\n\n"
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     yield ": keepalive\n\n"
         finally:
             POLLER.unsubscribe(queue)
@@ -412,7 +411,7 @@ class ChatMessage(BaseModel):
 class AgentChatRequest(BaseModel):
     messages: list[ChatMessage]
     # When set, execute this previously-proposed write tool, then continue.
-    confirm: Optional[dict] = None
+    confirm: dict | None = None
 
 
 def _persist_chat_message(role: str, content: str) -> None:

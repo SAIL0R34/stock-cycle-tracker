@@ -3,9 +3,8 @@
 import csv
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
-from stock_cycle_tracker.models import OHLCV, PivotPoint, SwingLeg, AnalysisResult
+from stock_cycle_tracker.models import OHLCV, AnalysisResult, PivotPoint, SwingLeg
 from stock_cycle_tracker.settings import settings
 
 
@@ -35,7 +34,7 @@ class CSVWriter:
     def write_pivots(
         self,
         pivots: list[PivotPoint],
-        filename: Optional[str] = None,
+        filename: str | None = None,
     ) -> Path:
         """Write pivot points to CSV with analysis-friendly schema.
 
@@ -149,7 +148,7 @@ class CSVWriter:
     def write_legs(
         self,
         legs: list[SwingLeg],
-        filename: Optional[str] = None,
+        filename: str | None = None,
     ) -> Path:
         """Write swing legs to CSV with analysis-friendly schema.
 
@@ -187,7 +186,7 @@ class CSVWriter:
         filepath = self.output_dir / filename
 
         # Calculate leg ranks
-        sorted_legs = sorted(legs, key=lambda l: abs(l.percent_change), reverse=True)
+        sorted_legs = sorted(legs, key=lambda leg: abs(leg.percent_change), reverse=True)
         leg_ranks = {leg.leg_id: i + 1 for i, leg in enumerate(sorted_legs)}
 
         with open(filepath, "w", newline="") as f:
@@ -244,7 +243,7 @@ class CSVWriter:
     def write_raw_data(
         self,
         data: list[OHLCV],
-        filename: Optional[str] = None,
+        filename: str | None = None,
     ) -> Path:
         """Write raw OHLCV data to CSV.
 
@@ -323,7 +322,7 @@ class CSVWriter:
     def write_summary(
         self,
         result: AnalysisResult,
-        filename: Optional[str] = None,
+        filename: str | None = None,
     ) -> Path:
         """Write summary statistics to CSV.
 
@@ -364,7 +363,7 @@ class CSVWriter:
     def write_pattern_matches(
         self,
         result: AnalysisResult,
-        filename: Optional[str] = None,
+        filename: str | None = None,
     ) -> Path:
         """Write pattern analog matches to CSV."""
         if filename is None:
@@ -404,7 +403,7 @@ class CSVWriter:
     def write_pattern_backtests(
         self,
         result: AnalysisResult,
-        filename: Optional[str] = None,
+        filename: str | None = None,
     ) -> Path:
         """Write walk-forward pattern validation records to CSV."""
         if filename is None:

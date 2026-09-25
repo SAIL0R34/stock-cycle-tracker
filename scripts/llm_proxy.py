@@ -9,7 +9,6 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-
 UPSTREAM = os.environ.get("LLM_PROXY_UPSTREAM", "http://127.0.0.1:8000/v1").rstrip("/")
 HOST = os.environ.get("LLM_PROXY_HOST", "127.0.0.1")
 PORT = int(os.environ.get("LLM_PROXY_PORT", "8900"))

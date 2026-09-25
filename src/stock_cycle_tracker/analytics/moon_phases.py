@@ -8,11 +8,11 @@ from math import ceil, floor
 from statistics import mean, median
 
 from stock_cycle_tracker.models import (
+    OHLCV,
     Config,
     MoonPhaseEvent,
     MoonPhaseInsight,
     MoonPhasePhaseStats,
-    OHLCV,
     PivotPoint,
     SwingLeg,
 )
@@ -48,7 +48,7 @@ def _estimate_phase_window_hours(data: list[OHLCV], config: Config) -> float:
     if len(data) >= 2:
         diffs = [
             (right.timestamp - left.timestamp).total_seconds() / 3600
-            for left, right in zip(data, data[1:])
+            for left, right in zip(data, data[1:], strict=False)
             if right.timestamp > left.timestamp
         ]
         if diffs:

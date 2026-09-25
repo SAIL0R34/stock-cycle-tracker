@@ -45,13 +45,17 @@ stock-cycle-tracker = "stock_cycle_tracker.cli.main:app"
 packages = ["src/stock_cycle_tracker"]
 
 [tool.ruff]
-line-length = 88
+line-length = 100
 target-version = "py311"
-select = ["E", "F", "W", "I"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
 ignore = ["E501"]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
+# typer's decorator idiom legitimately calls Option() in defaults
+"src/stock_cycle_tracker/cli/main.py" = ["B008"]
 
 [tool.mypy]
 python_version = "3.11"

@@ -7,9 +7,9 @@ import pytest
 
 from stock_cycle_tracker.analytics.decision import (
     WEIGHTS,
+    DecisionInputs,
     run_decision_walk_forward,
     score_decision,
-    DecisionInputs,
 )
 from stock_cycle_tracker.analytics.decision_memory import (
     DecisionMemoryStore,
@@ -20,11 +20,11 @@ from stock_cycle_tracker.analytics.decision_memory import (
     hold_band_pct,
 )
 from stock_cycle_tracker.models import (
+    OHLCV,
     Config,
     DecisionBrief,
     DecisionInvalidation,
     DecisionRecord,
-    OHLCV,
 )
 
 START = datetime(2026, 9, 23, 12, 0)
@@ -363,7 +363,7 @@ def test_build_track_record_aggregates(tmp_path):
     base = datetime(2026, 1, 1)
     _graded_directional_record(store, base, 1.0, fwd=4.0)
     _graded_directional_record(store, base + timedelta(hours=1), -1.0, fwd=-3.0, action="divest")
-    pending = _live_record(store, _candles())  # ungraded live decision
+    _live_record(store, _candles())  # ungraded live decision
 
     tr = build_track_record(store, "BTC-USD", "1h", [], 1.0)
     assert tr.graded_total == 2
@@ -387,7 +387,7 @@ def test_store_bounded_prefers_live_records(tmp_path):
     store = DecisionMemoryStore(str(tmp_path), max_records=100)
     base = datetime(2026, 1, 1)
     for i in range(80):  # replay first, older
-        record = _graded_directional_record(store, base + timedelta(minutes=i), source="replay")
+        _graded_directional_record(store, base + timedelta(minutes=i), source="replay")
     for i in range(80):  # live later, newer
         _graded_directional_record(store, base + timedelta(hours=1, minutes=i), source="live")
     store._save()
@@ -454,11 +454,10 @@ def test_store_persists_across_instances_sqlite(tmp_path):
 
 def test_store_migration_from_legacy_json(tmp_path):
     """A pre-SQLite decision_memory.json is adopted on first open."""
-    import json as _json
     legacy = tmp_path / "decision_memory.json"
     data = _candles(bars=200)
     store = DecisionMemoryStore(str(tmp_path))
-    rec = _live_record(store, data)
+    _live_record(store, data)
     store.export_json(legacy)
     # simulate legacy-only state: remove the db, keep the json
     (tmp_path / "decision_memory.db").unlink()
@@ -468,7 +467,7 @@ def test_store_migration_from_legacy_json(tmp_path):
             extra.unlink()
     fresh = DecisionMemoryStore(str(tmp_path))
     assert len(fresh.records) == 1
-    assert fresh.records[0].decision_id == rec.decision_id
+    assert fresh.records[0].decision_id == store.records[0].decision_id
     assert not legacy.exists() and (tmp_path / "decision_memory.json.migrated").exists()
 
 

@@ -11,7 +11,7 @@ Two layers of refusal:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass
@@ -23,7 +23,7 @@ class RiskLimits:
     block_add_to_loser: bool = True      # no averaging into an existing position
 
     @classmethod
-    def from_config(cls, config: Any) -> "RiskLimits":
+    def from_config(cls, config: Any) -> RiskLimits:
         return cls(
             max_position_pct=getattr(config, "trading_max_position_pct", 5.0),
             max_daily_loss_pct=getattr(config, "trading_max_daily_loss_pct", 3.0),
@@ -135,13 +135,13 @@ def check_bracket(
     symbol: str,
     side: str,
     stop_price: float,
-    entry_price: Optional[float],
+    entry_price: float | None,
     brief: dict[str, Any],
     account: dict[str, Any],
     positions: list[dict[str, Any]],
     limits: RiskLimits | None = None,
-    qty: Optional[float] = None,
-    take_profit_price: Optional[float] = None,
+    qty: float | None = None,
+    take_profit_price: float | None = None,
 ) -> RiskDecision:
     """Gate for chart-placed bracket orders (entry + attached stop).
 

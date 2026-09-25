@@ -3,7 +3,7 @@
 import pytest
 
 from stock_cycle_tracker.models import Config, PivotMethod, Timeframe
-from stock_cycle_tracker.settings import Settings, DataSettings, ChartSettings, OutputSettings
+from stock_cycle_tracker.settings import ChartSettings, DataSettings, Settings
 
 
 class TestConfig:

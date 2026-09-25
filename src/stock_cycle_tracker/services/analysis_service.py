@@ -3,30 +3,7 @@
 import asyncio
 import logging
 from datetime import datetime
-from typing import Optional
 
-from stock_cycle_tracker.data.loaders import DataLoader
-from stock_cycle_tracker.models import (
-    AnalysisMetadata,
-    AssetCorrelationInsight,
-    AnalysisResult,
-    Config,
-    OHLCV,
-    PivotPoint,
-    PivotType,
-    SwingLeg,
-)
-from stock_cycle_tracker.pivots.detector import PivotDetector
-from stock_cycle_tracker.pivots.zigzag import ZigZagDetector
-from stock_cycle_tracker.pivots.fractal import FractalDetector
-from stock_cycle_tracker.pivots.filters import (
-    NoiseFilter,
-    ATRFilter,
-    PercentChangeFilter,
-    ConsecutivePivotFilter,
-)
-from stock_cycle_tracker.pivots.confirmation import confirm_pivots
-from stock_cycle_tracker.analytics.legs import LegBuilder, calculate_leg_metrics
 from stock_cycle_tracker.analytics.cross_asset import build_asset_correlation_insight
 from stock_cycle_tracker.analytics.decision import (
     WEIGHTS,
@@ -41,14 +18,30 @@ from stock_cycle_tracker.analytics.decision_memory import (
     build_track_record,
 )
 from stock_cycle_tracker.analytics.intelligence import build_market_intelligence
+from stock_cycle_tracker.analytics.legs import LegBuilder
 from stock_cycle_tracker.analytics.patterns import PatternRecognitionEngine
 from stock_cycle_tracker.analytics.stats import calculate_summary_stats
 from stock_cycle_tracker.analytics.structures import discover_structures
-from stock_cycle_tracker.visualization.plotly_chart import create_candlestick_chart
+from stock_cycle_tracker.data.loaders import DataLoader
 from stock_cycle_tracker.export.csv_writer import CSVWriter
-from stock_cycle_tracker.export.json_writer import JSONWriter
 from stock_cycle_tracker.export.filesystem import OutputFilesystem
+from stock_cycle_tracker.export.json_writer import JSONWriter
+from stock_cycle_tracker.models import (
+    OHLCV,
+    AnalysisMetadata,
+    AnalysisResult,
+    AssetCorrelationInsight,
+    Config,
+    PivotPoint,
+)
+from stock_cycle_tracker.pivots.confirmation import confirm_pivots
+from stock_cycle_tracker.pivots.filters import (
+    ATRFilter,
+)
+from stock_cycle_tracker.pivots.fractal import FractalDetector
+from stock_cycle_tracker.pivots.zigzag import ZigZagDetector
 from stock_cycle_tracker.settings import settings
+from stock_cycle_tracker.visualization.plotly_chart import create_candlestick_chart
 
 logger = logging.getLogger("stock_cycle_tracker.services.analysis")
 
@@ -58,9 +51,9 @@ class AnalysisService:
 
     def __init__(
         self,
-        config: Optional[Config] = None,
-        data_loader: Optional[DataLoader] = None,
-        data_end: Optional[datetime] = None,
+        config: Config | None = None,
+        data_loader: DataLoader | None = None,
+        data_end: datetime | None = None,
         use_cache: bool = False,
     ):
         """Initialize the analysis service.
@@ -81,9 +74,9 @@ class AnalysisService:
 
     async def run_analysis(
         self,
-        symbol: Optional[str] = None,
-        timeframe: Optional[str] = None,
-        lookback: Optional[str] = None,
+        symbol: str | None = None,
+        timeframe: str | None = None,
+        lookback: str | None = None,
     ) -> AnalysisResult:
         """Run a complete analysis.
 
@@ -302,9 +295,9 @@ class AnalysisService:
 
     def run_analysis_sync(
         self,
-        symbol: Optional[str] = None,
-        timeframe: Optional[str] = None,
-        lookback: Optional[str] = None,
+        symbol: str | None = None,
+        timeframe: str | None = None,
+        lookback: str | None = None,
     ) -> AnalysisResult:
         """Run analysis from synchronous contexts like Streamlit callbacks."""
         return asyncio.run(self.run_analysis(symbol, timeframe, lookback))
@@ -407,7 +400,7 @@ class AnalysisService:
     def generate_chart(
         self,
         result: AnalysisResult,
-        title: Optional[str] = None,
+        title: str | None = None,
     ) -> None:
         """Generate and save a chart.
 

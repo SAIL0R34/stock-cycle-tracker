@@ -1,13 +1,12 @@
 """Core data models for the Stock Cycle Tracker."""
 
 from datetime import datetime
-from enum import Enum
-from typing import Any
+from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator
 
 
-class Timeframe(str, Enum):
+class Timeframe(StrEnum):
     """Supported timeframes for price data."""
 
     ONE_MINUTE = "1m"
@@ -21,14 +20,14 @@ class Timeframe(str, Enum):
     ONE_WEEK = "1w"
 
 
-class PivotType(str, Enum):
+class PivotType(StrEnum):
     """Types of pivot points."""
 
     SWING_HIGH = "swing_high"
     SWING_LOW = "swing_low"
 
 
-class PivotMethod(str, Enum):
+class PivotMethod(StrEnum):
     """Pivot detection methods."""
 
     ZIGZAG = "zigzag"

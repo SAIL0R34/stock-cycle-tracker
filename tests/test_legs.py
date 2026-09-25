@@ -1,11 +1,12 @@
 """Tests for swing leg generation and metrics."""
 
-import pytest
 from datetime import datetime, timedelta
 
-from stock_cycle_tracker.models import OHLCV, PivotPoint, PivotType, SwingLeg
+import pytest
+
 from stock_cycle_tracker.analytics.legs import LegBuilder, calculate_leg_metrics
 from stock_cycle_tracker.analytics.stats import calculate_summary_stats
+from stock_cycle_tracker.models import OHLCV, PivotPoint, PivotType, SwingLeg
 
 
 class TestLegBuilder:

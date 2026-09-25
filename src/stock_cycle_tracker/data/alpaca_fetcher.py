@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from stock_cycle_tracker.data.alpaca_client import BAR_TIMEFRAMES, AlpacaHTTPClient
@@ -42,7 +41,7 @@ class AlpacaFetcher(BaseFetcher):
         timeframe: Timeframe,
         start: datetime,
         end: datetime,
-        limit: Optional[int] = None,
+        limit: int | None = None,
     ) -> list[OHLCV]:
         if not self.client.has_credentials:
             raise RuntimeError(
@@ -56,7 +55,7 @@ class AlpacaFetcher(BaseFetcher):
 
         candles = [
             OHLCV(
-                timestamp=datetime.fromtimestamp(bar["t"], tz=timezone.utc).replace(tzinfo=None),
+                timestamp=datetime.fromtimestamp(bar["t"], tz=UTC).replace(tzinfo=None),
                 open=float(bar["o"]),
                 high=float(bar["h"]),
                 low=float(bar["l"]),
@@ -80,7 +79,7 @@ class AlpacaFetcher(BaseFetcher):
     @staticmethod
     def _in_regular_session(ts_utc: datetime) -> bool:
         """True when the bar timestamp falls inside 09:30–16:00 ET on a weekday."""
-        local = ts_utc.replace(tzinfo=timezone.utc).astimezone(ET)
+        local = ts_utc.replace(tzinfo=UTC).astimezone(ET)
         if local.weekday() >= 5:
             return False
         minutes = local.hour * 60 + local.minute
@@ -88,5 +87,5 @@ class AlpacaFetcher(BaseFetcher):
 
     async def get_available_periods(self, symbol: str) -> list[tuple[datetime, datetime]]:
         """Free-tier bars go back years for liquid tickers; report a generous window."""
-        end = datetime.now(timezone.utc).replace(tzinfo=None)
+        end = datetime.now(UTC).replace(tzinfo=None)
         return [(end - timedelta(days=365 * 5), end)]

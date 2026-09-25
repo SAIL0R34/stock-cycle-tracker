@@ -25,7 +25,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from stock_cycle_tracker.data.market_hours import MarketHoursService
 from stock_cycle_tracker.models import Config
@@ -41,18 +41,18 @@ MAX_SCAN_SYMBOLS = 20
 @dataclass
 class ScanRow:
     symbol: str
-    last_price: Optional[float] = None
+    last_price: float | None = None
     action: str = "error"
     composite_score: float = 0.0
     conviction: float = 0.0
     quality: str = "low"
-    forming_pct: Optional[float] = None
-    top_invalidation_price: Optional[float] = None
-    top_invalidation_flips: Optional[str] = None
+    forming_pct: float | None = None
+    top_invalidation_price: float | None = None
+    top_invalidation_flips: str | None = None
     summary: str = ""
-    last_candle: Optional[str] = None
+    last_candle: str | None = None
     stale: bool = False
-    error: Optional[str] = None
+    error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -76,7 +76,7 @@ class ScanRow:
 class ScanResult:
     rows: list[ScanRow] = field(default_factory=list)
     filtered: list[dict] = field(default_factory=list)
-    ran_at: Optional[str] = None
+    ran_at: str | None = None
     market_phase: str = "unknown"
     duration_seconds: float = 0.0
     note: str = ""

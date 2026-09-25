@@ -1,6 +1,6 @@
 """Tests for the paper-trading stack: broker seam, risk gate, service flow."""
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from unittest.mock import patch
 
 import pytest
@@ -267,7 +267,7 @@ def test_check_bracket_stop_must_be_on_losing_side():
 
 
 def test_check_bracket_notional_cap():
-    from stock_cycle_tracker.trading.risk import check_bracket as cb, RiskLimits
+    from stock_cycle_tracker.trading.risk import check_bracket as cb
     decision = cb("AAPL", "buy", stop_price=97.0, entry_price=100.0,
                   brief=_brief(), account=_account(cash=1000.0), positions=[],
                   qty=20)  # 20 × 100 = $2000 vs $50 cap (5% of 1000)
@@ -312,7 +312,7 @@ def test_open_lines_maps_bracket_orders(tmp_path):
     with patch.object(client, "get_open_orders", return_value=orders), \
          patch.object(client, "get_positions", return_value=positions):
         payload = service.open_lines(config)
-    kinds = [(l["kind"], l.get("price")) for l in payload["lines"]]
+    kinds = [(row["kind"], row.get("price")) for row in payload["lines"]]
     assert ("entry", 100.0) in kinds and ("stop", 97.0) in kinds
     assert payload["positions"][0]["symbol"] == "MSFT"
     assert payload["positions"][0]["price"] == 420.5

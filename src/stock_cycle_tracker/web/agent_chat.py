@@ -20,9 +20,10 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Callable, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from stock_cycle_tracker.models import PivotMethod, Timeframe
 from stock_cycle_tracker.web import agent_db
@@ -257,7 +258,7 @@ def _tool_update_config(args: dict, ctx: ChatContext) -> dict:
 
 
 def _tool_watchlist_add(args: dict, ctx: ChatContext) -> dict:
-    from stock_cycle_tracker.watchlist.store import normalize_symbol  # noqa: F401 (shared below)
+    from stock_cycle_tracker.watchlist.store import WatchlistStore, normalize_symbol
 
     raw = args.get("symbols")
     if isinstance(raw, str):
@@ -272,7 +273,7 @@ def _tool_watchlist_add(args: dict, ctx: ChatContext) -> dict:
 
 
 def _tool_watchlist_remove(args: dict, ctx: ChatContext) -> dict:
-    from stock_cycle_tracker.watchlist.store import normalize_symbol  # noqa: F401 (shared below)
+    from stock_cycle_tracker.watchlist.store import WatchlistStore, normalize_symbol
 
     raw = args.get("symbols")
     if isinstance(raw, str):
@@ -414,7 +415,7 @@ def _tools_doc() -> str:
 # ---------------------------------------------------------------------------
 
 def _system_prompt() -> str:
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
     return f"""You are the assistant inside a BTC swing-cycle analysis dashboard.
 Today is {today} (UTC). You help the user read pivots, swing legs, cycle statistics and
 pattern insights, re-run the analysis with different settings, and export data.
@@ -482,7 +483,7 @@ def _confirm_response(tool: str, args: dict, summary: str, trace: list) -> dict:
     }
 
 
-def run_chat(messages: list[dict], confirm: Optional[dict], ctx: ChatContext) -> dict:
+def run_chat(messages: list[dict], confirm: dict | None, ctx: ChatContext) -> dict:
     """Run one assistant turn. Returns a dict with type 'message' or 'confirm'."""
     observations: list[dict] = []
     trace: list[dict] = []

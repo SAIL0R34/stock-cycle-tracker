@@ -4,9 +4,9 @@ Handles equity OHLCV ingestion (Alpaca primary, Coinbase crypto fallback),
 normalization, source abstraction, and loading historical data.
 """
 
+from .adapters import DataAdapter
 from .fetchers import BaseFetcher, CoinbaseFetcher, get_fetcher
 from .loaders import DataLoader
-from .adapters import DataAdapter
 from .normalization import normalize_ohlcv
 
 __all__ = [

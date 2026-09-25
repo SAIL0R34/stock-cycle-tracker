@@ -33,6 +33,7 @@ from stock_cycle_tracker.analytics.legs import LegBuilder
 from stock_cycle_tracker.analytics.stats import calculate_summary_stats
 from stock_cycle_tracker.analytics.structures import discover_structures
 from stock_cycle_tracker.models import (
+    OHLCV,
     Config,
     DecisionBandStat,
     DecisionBrief,
@@ -40,7 +41,6 @@ from stock_cycle_tracker.models import (
     DecisionContribution,
     DecisionInvalidation,
     DecisionWalkForward,
-    OHLCV,
     PivotPoint,
     StructureDiscovery,
     SummaryStatistics,
@@ -529,7 +529,6 @@ def run_decision_walk_forward(
         )
 
     benchmark = (data[-1].close / data[indices[0]].close - 1) * 100 if data[indices[0]].close else None
-    invest_avg = next((b.avg_forward_return_pct for b in band_stats if b.action == ACTION_INVEST), None)
     note = (
         f"Replayed {len(checkpoints)} historical checkpoints with a {horizon}-bar forward window. "
         "Scores use structural + regime evidence only (pattern engine excluded from replay). "

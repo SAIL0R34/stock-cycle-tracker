@@ -1,9 +1,7 @@
 """Pipeline service for orchestrating the complete analysis workflow."""
 
-import asyncio
+from collections.abc import Callable
 from datetime import datetime
-from pathlib import Path
-from typing import Optional
 
 from stock_cycle_tracker.data.loaders import DataLoader
 from stock_cycle_tracker.models import AnalysisResult, Config
@@ -15,8 +13,8 @@ class PipelineService:
 
     def __init__(
         self,
-        config: Optional[Config] = None,
-        data_loader: Optional[DataLoader] = None,
+        config: Config | None = None,
+        data_loader: DataLoader | None = None,
     ):
         """Initialize the pipeline service.
 
@@ -29,10 +27,10 @@ class PipelineService:
 
     async def run(
         self,
-        symbol: Optional[str] = None,
-        timeframe: Optional[str] = None,
-        lookback: Optional[str] = None,
-        run_dir: Optional[str] = None,
+        symbol: str | None = None,
+        timeframe: str | None = None,
+        lookback: str | None = None,
+        run_dir: str | None = None,
     ) -> tuple[AnalysisResult, dict[str, str]]:
         """Run the complete analysis pipeline.
 
@@ -59,8 +57,8 @@ class PipelineService:
     async def run_batch(
         self,
         symbols: list[str],
-        timeframe: Optional[str] = None,
-        lookback: Optional[str] = None,
+        timeframe: str | None = None,
+        lookback: str | None = None,
     ) -> dict[str, tuple[AnalysisResult, dict[str, str]]]:
         """Run analysis for multiple symbols.
 
@@ -82,9 +80,9 @@ class PipelineService:
     async def run_with_callback(
         self,
         symbol: str,
-        timeframe: Optional[str] = None,
-        lookback: Optional[str] = None,
-        on_step: Optional[callable] = None,
+        timeframe: str | None = None,
+        lookback: str | None = None,
+        on_step: Callable[[str, dict], None] | None = None,
     ) -> tuple[AnalysisResult, dict[str, str]]:
         """Run analysis with callback for each step.
 

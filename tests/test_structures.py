@@ -1,12 +1,11 @@
 """Tests for deterministic core market-structure discovery."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from stock_cycle_tracker.analytics.structures import discover_structures
 from stock_cycle_tracker.models import OHLCV, PivotPoint, PivotType
 
-
-BASE = datetime(2026, 1, 1, tzinfo=timezone.utc)
+BASE = datetime(2026, 1, 1, tzinfo=UTC)
 
 
 def _pivot(index: int, price: float, kind: PivotType) -> PivotPoint:

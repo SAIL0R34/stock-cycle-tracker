@@ -1,9 +1,8 @@
 """Base pivot detector interface and common functionality."""
 
 import abc
-from typing import Optional
 
-from stock_cycle_tracker.models import OHLCV, PivotPoint, PivotType, Config
+from stock_cycle_tracker.models import OHLCV, Config, PivotPoint, PivotType
 
 
 class PivotDetector(abc.ABC):

@@ -11,9 +11,9 @@ import asyncio
 import json
 import logging
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from stock_cycle_tracker.models import AnalysisResult, Config
 from stock_cycle_tracker.services.analysis_service import AnalysisService
@@ -26,9 +26,9 @@ class AppState:
     def __init__(self) -> None:
         self.config_path: Path = settings.resolve_app_path("outputs") / "app_config.json"
         self.config: Config = self._load_persisted_config()
-        self.result: Optional[AnalysisResult] = None
+        self.result: AnalysisResult | None = None
         self.last_files: dict[str, str] = {}
-        self.last_run_at: Optional[str] = None
+        self.last_run_at: str | None = None
         self.run_lock = threading.Lock()
 
     def _load_persisted_config(self) -> Config:
@@ -66,9 +66,9 @@ class AppState:
     # ── Analysis ──────────────────────────────────────────────────────────
     def run_analysis_sync(
         self,
-        symbol: Optional[str] = None,
-        timeframe: Optional[str] = None,
-        lookback: Optional[str] = None,
+        symbol: str | None = None,
+        timeframe: str | None = None,
+        lookback: str | None = None,
     ) -> AnalysisResult:
         """Run the pipeline (blocking). Safe to call from a worker thread."""
         if not self.run_lock.acquire(timeout=1):
@@ -87,7 +87,7 @@ class AppState:
             service = AnalysisService(self.config)
             result = asyncio.run(service.run_analysis())
             self.result = result
-            self.last_run_at = datetime.now(timezone.utc).isoformat()
+            self.last_run_at = datetime.now(UTC).isoformat()
             return result
         finally:
             self.run_lock.release()

@@ -22,8 +22,8 @@ import logging
 import os
 import threading
 import time
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -85,9 +85,9 @@ class AlpacaHTTPClient:
 
     def __init__(
         self,
-        api_key_id: Optional[str] = None,
-        api_secret_key: Optional[str] = None,
-        data_feed: Optional[str] = None,
+        api_key_id: str | None = None,
+        api_secret_key: str | None = None,
+        data_feed: str | None = None,
         requests_per_minute: int = 180,
         timeout: float = 20.0,
     ):
@@ -140,8 +140,8 @@ class AlpacaHTTPClient:
         self,
         method: str,
         url: str,
-        params: Optional[dict[str, Any]] = None,
-        body: Optional[dict[str, Any]] = None,
+        params: dict[str, Any] | None = None,
+        body: dict[str, Any] | None = None,
         retry_on_429: bool = True,
     ) -> Any:
         self._resolve_credentials()  # pick up Settings-UI changes immediately
@@ -182,11 +182,11 @@ class AlpacaHTTPClient:
         """Paginated historical bars for one symbol. ``timeframe`` is the
         Alpaca interval string (see BAR_TIMEFRAMES values)."""
         bars: list[dict[str, Any]] = []
-        page_token: Optional[str] = None
+        page_token: str | None = None
         while True:
             params: dict[str, Any] = {
-                "start": int(start.replace(tzinfo=timezone.utc).timestamp()),
-                "end": int(end.replace(tzinfo=timezone.utc).timestamp()),
+                "start": int(start.replace(tzinfo=UTC).timestamp()),
+                "end": int(end.replace(tzinfo=UTC).timestamp()),
                 "adjustment": "split",
                 "feed": self.data_feed,
                 "limit": 10000,
@@ -219,8 +219,8 @@ class AlpacaHTTPClient:
                 return self._request(
                     "GET", f"{DATA_HOST}/v2/stocks/{symbol}/bars",
                     params={
-                        "start": int(start.replace(tzinfo=timezone.utc).timestamp()),
-                        "end": int(end.replace(tzinfo=timezone.utc).timestamp()),
+                        "start": int(start.replace(tzinfo=UTC).timestamp()),
+                        "end": int(end.replace(tzinfo=UTC).timestamp()),
                         "timeframe": timeframe,
                         "adjustment": "split",
                         "feed": feed,

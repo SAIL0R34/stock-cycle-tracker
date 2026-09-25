@@ -1,14 +1,10 @@
 """Tests for service orchestration."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from stock_cycle_tracker.models import (
-    AnalysisMetadata,
-    PivotPoint,
-    PivotType,
-    SwingLeg,
-    SummaryStatistics,
     AnalysisResult,
     Config,
 )

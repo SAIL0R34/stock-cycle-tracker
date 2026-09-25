@@ -1,12 +1,10 @@
 """Plotly-based interactive chart creation with enhanced visualization."""
 
-from typing import Optional
 
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from stock_cycle_tracker.models import OHLCV, PivotPoint, SwingLeg
-from stock_cycle_tracker.settings import ChartSettings
 
 
 def _leg_color(start_price: float, end_price: float) -> str:
@@ -19,8 +17,8 @@ def _leg_color(start_price: float, end_price: float) -> str:
 
 def create_candlestick_chart(
     data: list[OHLCV],
-    pivots: Optional[list[PivotPoint]] = None,
-    legs: Optional[list[SwingLeg]] = None,
+    pivots: list[PivotPoint] | None = None,
+    legs: list[SwingLeg] | None = None,
     title: str = "BTC Swing Cycle Analysis",
     width: int = 1200,
     height: int = 800,

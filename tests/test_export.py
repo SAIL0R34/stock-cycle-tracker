@@ -4,10 +4,16 @@ import os
 import tempfile
 from datetime import datetime, timedelta
 
-import pytest
-
-from stock_cycle_tracker.models import OHLCV, PivotPoint, PivotType, SwingLeg, AnalysisMetadata, SummaryStatistics, AnalysisResult
 from stock_cycle_tracker.export.csv_writer import CSVWriter
+from stock_cycle_tracker.models import (
+    OHLCV,
+    AnalysisMetadata,
+    AnalysisResult,
+    PivotPoint,
+    PivotType,
+    SummaryStatistics,
+    SwingLeg,
+)
 
 
 class TestCSVWriter:
@@ -34,7 +40,7 @@ class TestCSVWriter:
             assert os.path.exists(filepath)
 
             # Verify file content
-            with open(filepath, "r") as f:
+            with open(filepath) as f:
                 content = f.read()
                 assert "pivot_id" in content
                 assert "pivot_type" in content
@@ -68,7 +74,7 @@ class TestCSVWriter:
             assert os.path.exists(filepath)
 
             # Verify file content
-            with open(filepath, "r") as f:
+            with open(filepath) as f:
                 content = f.read()
                 assert "leg_id" in content
                 assert "start_pivot_id" in content
@@ -187,7 +193,7 @@ class TestCSVWriter:
             filepath = writer.write_summary(result)
             assert os.path.exists(filepath)
 
-            with open(filepath, "r") as f:
+            with open(filepath) as f:
                 content = f.read()
                 assert "total_legs" in content
                 assert "avg_percent_change" in content

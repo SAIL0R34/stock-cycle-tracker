@@ -1,9 +1,7 @@
 """Filesystem utilities for managing output directories."""
 
-import os
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from stock_cycle_tracker.settings import settings
 
@@ -24,7 +22,7 @@ class OutputFilesystem:
         self,
         symbol: str,
         timeframe: str,
-        timestamp: Optional[datetime] = None,
+        timestamp: datetime | None = None,
     ) -> Path:
         """Create a timestamped directory for a run.
 
@@ -46,7 +44,7 @@ class OutputFilesystem:
 
         return run_dir
 
-    def get_latest_run_directory(self, symbol: Optional[str] = None) -> Optional[Path]:
+    def get_latest_run_directory(self, symbol: str | None = None) -> Path | None:
         """Get the most recent run directory.
 
         Args:
@@ -71,7 +69,7 @@ class OutputFilesystem:
         # Return the most recently modified directory
         return max(run_dirs, key=lambda d: d.stat().st_mtime)
 
-    def get_all_run_directories(self, symbol: Optional[str] = None) -> list[Path]:
+    def get_all_run_directories(self, symbol: str | None = None) -> list[Path]:
         """Get all run directories.
 
         Args:
@@ -95,7 +93,7 @@ class OutputFilesystem:
         self,
         chart_data: bytes,
         filename: str,
-        run_dir: Optional[Path] = None,
+        run_dir: Path | None = None,
     ) -> Path:
         """Save chart data to a file.
 
@@ -120,7 +118,7 @@ class OutputFilesystem:
         self,
         content: str,
         filename: str,
-        run_dir: Optional[Path] = None,
+        run_dir: Path | None = None,
     ) -> Path:
         """Save text content to a file.
 
@@ -144,7 +142,7 @@ class OutputFilesystem:
     def get_file_path(
         self,
         filename: str,
-        run_dir: Optional[Path] = None,
+        run_dir: Path | None = None,
     ) -> Path:
         """Get a file path in the output directory.
 
@@ -163,7 +161,7 @@ class OutputFilesystem:
     def cleanup_old_runs(
         self,
         max_age_days: int = 30,
-        symbol: Optional[str] = None,
+        symbol: str | None = None,
     ) -> int:
         """Remove run directories older than max_age_days.
 

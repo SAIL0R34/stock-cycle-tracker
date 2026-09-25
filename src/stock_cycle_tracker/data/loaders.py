@@ -1,9 +1,7 @@
 """Data loaders for loading OHLCV data from various sources."""
 
-import os
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 
@@ -17,8 +15,8 @@ class DataLoader:
 
     def __init__(
         self,
-        fetcher: Optional[BaseFetcher] = None,
-        cache_dir: Optional[str] = None,
+        fetcher: BaseFetcher | None = None,
+        cache_dir: str | None = None,
     ):
         """Initialize the data loader.
 

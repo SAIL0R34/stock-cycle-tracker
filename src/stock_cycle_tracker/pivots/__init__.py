@@ -3,11 +3,11 @@
 Contains logic for swing high/low detection with configurable methods and noise filtering.
 """
 
-from .detector import PivotDetector
-from .zigzag import ZigZagDetector
-from .fractal import FractalDetector
-from .filters import NoiseFilter, ATRFilter, PercentChangeFilter
 from .confirmation import PivotConfirmation
+from .detector import PivotDetector
+from .filters import ATRFilter, NoiseFilter, PercentChangeFilter
+from .fractal import FractalDetector
+from .zigzag import ZigZagDetector
 
 __all__ = [
     "PivotDetector",

@@ -1,11 +1,8 @@
 """Filters for noise reduction and pivot validation."""
 
 import abc
-from typing import Optional
 
-import numpy as np
-
-from stock_cycle_tracker.models import OHLCV, PivotPoint, PivotType, Config
+from stock_cycle_tracker.models import OHLCV, PivotPoint
 
 
 class PivotFilter(abc.ABC):
@@ -109,7 +106,7 @@ class ATRFilter(PivotFilter):
 
         return result
 
-    def _calculate_atr(self, data: list[OHLCV]) -> list[Optional[float]]:
+    def _calculate_atr(self, data: list[OHLCV]) -> list[float | None]:
         """Calculate ATR values.
 
         Args:

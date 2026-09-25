@@ -96,7 +96,7 @@ def add_price_level_annotations(
         List of annotation dictionaries
     """
     annotations = []
-    for price, label in zip(price_levels, labels):
+    for price, label in zip(price_levels, labels, strict=False):
         annotation = {
             "x": timestamp,
             "y": price,

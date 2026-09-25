@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
 
 from stock_cycle_tracker.analytics.intelligence import build_market_intelligence
-from stock_cycle_tracker.models import AnalysisResult, Config, OHLCV
+from stock_cycle_tracker.models import OHLCV, AnalysisResult, Config
 
 MAX_CANDLES_DEFAULT = 6000
 
@@ -95,7 +95,7 @@ def serialize_result(
     return payload
 
 
-def build_insight_context(result: Optional[AnalysisResult], config: Config) -> dict[str, Any]:
+def build_insight_context(result: AnalysisResult | None, config: Config) -> dict[str, Any]:
     """Compact dashboard context for the LLM insight / agent overview —
     the same idea as the Streamlit app's _build_qwen_screen_context."""
     ctx: dict[str, Any] = {

@@ -1,7 +1,5 @@
 """Swing leg generation and metrics calculation."""
 
-from datetime import datetime
-from typing import Optional
 
 from stock_cycle_tracker.models import PivotPoint, PivotType, SwingLeg
 
@@ -59,7 +57,7 @@ class LegBuilder:
         leg_id: int,
         start_pivot_id: int,
         data: list,
-    ) -> Optional[SwingLeg]:
+    ) -> SwingLeg | None:
         """Build a single swing leg between two pivots.
 
         Args:
@@ -113,7 +111,7 @@ class LegBuilder:
         pivots: list[PivotPoint],
         legs: list[SwingLeg],
         data: list,
-    ) -> Optional[SwingLeg]:
+    ) -> SwingLeg | None:
         """Build the provisional leg from the last confirmed pivot to the
         latest close. This leg is still forming — it has no confirming
         reversal yet, so it must not be included in pattern history.

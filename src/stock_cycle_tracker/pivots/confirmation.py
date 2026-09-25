@@ -1,6 +1,6 @@
 """Pivot confirmation logic for validating swing points."""
 
-from stock_cycle_tracker.models import OHLCV, PivotPoint, PivotType, Config
+from stock_cycle_tracker.models import OHLCV, Config, PivotPoint, PivotType
 
 
 class PivotConfirmation:

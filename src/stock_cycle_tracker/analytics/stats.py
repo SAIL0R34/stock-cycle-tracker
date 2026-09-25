@@ -1,10 +1,9 @@
 """Statistical analysis functions for swing cycle data."""
 
-from typing import Optional
 
 import numpy as np
 
-from stock_cycle_tracker.models import OHLCV, SwingLeg, SummaryStatistics
+from stock_cycle_tracker.models import OHLCV, SummaryStatistics, SwingLeg
 
 
 def amplitude_duration_correlation(legs: list[SwingLeg]) -> float:
@@ -25,7 +24,7 @@ def amplitude_duration_correlation(legs: list[SwingLeg]) -> float:
 
 def calculate_summary_stats(
     legs: list[SwingLeg],
-    data: Optional[list[OHLCV]] = None,
+    data: list[OHLCV] | None = None,
 ) -> SummaryStatistics:
     """Calculate summary statistics for swing legs.
 
@@ -261,7 +260,7 @@ def calculate_correlation(
     mean1 = sum(values1) / len(values1)
     mean2 = sum(values2) / len(values2)
 
-    numerator = sum((v1 - mean1) * (v2 - mean2) for v1, v2 in zip(values1, values2))
+    numerator = sum((v1 - mean1) * (v2 - mean2) for v1, v2 in zip(values1, values2, strict=False))
     denom1 = sum((v - mean1) ** 2 for v in values1)
     denom2 = sum((v - mean2) ** 2 for v in values2)
 
@@ -360,7 +359,6 @@ def calculate_cycle_metrics(legs: list[SwingLeg]) -> dict:
 
     # Amplitude-duration relationship (correlation between size and duration)
     if len(legs) >= 2:
-        abs_changes = [abs(leg.percent_change) for leg in legs]
         correlation = calculate_correlation(legs, "percent_change", "duration_minutes")
     else:
         correlation = 0.0

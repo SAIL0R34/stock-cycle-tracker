@@ -3,26 +3,25 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-import numpy as np
 import pandas as pd
 
 from stock_cycle_tracker.models import (
+    OHLCV,
     AssetCorrelationInsight,
     AssetCorrelationObservation,
-    OHLCV,
 )
 
 
 def _to_unix_seconds(value: datetime) -> int:
     """Convert naive or aware datetimes into UTC unix seconds."""
     if value.tzinfo is None:
-        value = value.replace(tzinfo=timezone.utc)
+        value = value.replace(tzinfo=UTC)
     else:
-        value = value.astimezone(timezone.utc)
+        value = value.astimezone(UTC)
     return int(value.timestamp())
 
 
@@ -60,12 +59,12 @@ def fetch_yahoo_daily_close_series(
         .get("close", [])
     )
     records = []
-    for ts, close in zip(timestamps, closes):
+    for ts, close in zip(timestamps, closes, strict=False):
         if close is None:
             continue
         records.append(
             (
-                datetime.fromtimestamp(ts, tz=timezone.utc).replace(tzinfo=None),
+                datetime.fromtimestamp(ts, tz=UTC).replace(tzinfo=None),
                 float(close),
             )
         )

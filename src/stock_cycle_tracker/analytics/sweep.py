@@ -17,7 +17,7 @@ from stock_cycle_tracker.analytics.decision import DecisionInputs, score_decisio
 from stock_cycle_tracker.analytics.legs import LegBuilder
 from stock_cycle_tracker.analytics.stats import calculate_summary_stats
 from stock_cycle_tracker.analytics.structures import discover_structures
-from stock_cycle_tracker.models import Config, OHLCV
+from stock_cycle_tracker.models import OHLCV, Config
 from stock_cycle_tracker.pivots.confirmation import confirm_pivots
 from stock_cycle_tracker.pivots.filters import ATRFilter
 from stock_cycle_tracker.pivots.zigzag import ZigZagDetector

@@ -1,11 +1,10 @@
 """Tests for pivot detection with noise filtering and ATR support."""
 
-import pytest
 from datetime import datetime, timedelta
 
-from stock_cycle_tracker.models import OHLCV, PivotPoint, PivotType, Config
+from stock_cycle_tracker.models import OHLCV, Config, PivotPoint, PivotType
+from stock_cycle_tracker.pivots.filters import PercentChangeFilter
 from stock_cycle_tracker.pivots.zigzag import ZigZagDetector
-from stock_cycle_tracker.pivots.filters import ATRFilter, PercentChangeFilter
 
 
 class TestZigZagDetector:
@@ -197,7 +196,7 @@ class TestZigZagDetector:
         assert any(p.index == 4 for p in highs)
         assert all(p.price != 103 for p in highs)
         # Alternation holds by construction
-        for a, b in zip(pivots, pivots[1:]):
+        for a, b in zip(pivots, pivots[1:], strict=False):
             assert a.pivot_type != b.pivot_type
         # Every pivot records the candle that confirmed it
         for p in pivots:

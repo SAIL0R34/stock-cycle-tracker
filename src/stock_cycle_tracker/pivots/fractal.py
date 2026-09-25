@@ -4,7 +4,7 @@ Fractals identify pivot points by looking for patterns where price reverses
 after reaching a local extremum.
 """
 
-from stock_cycle_tracker.models import OHLCV, PivotPoint, PivotType, Config
+from stock_cycle_tracker.models import OHLCV, Config, PivotPoint, PivotType
 from stock_cycle_tracker.pivots.detector import BasePivotDetector
 
 

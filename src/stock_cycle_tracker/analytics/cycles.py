@@ -1,8 +1,7 @@
 """Cycle analyzer for identifying and analyzing price cycles."""
 
-from typing import Optional
 
-from stock_cycle_tracker.models import PivotPoint, SwingLeg
+from stock_cycle_tracker.models import SwingLeg
 
 
 class CycleAnalyzer:
@@ -132,7 +131,7 @@ class CycleAnalyzer:
     def find_incomplete_cycle(
         self,
         legs: list[SwingLeg],
-    ) -> Optional[list[SwingLeg]]:
+    ) -> list[SwingLeg] | None:
         """Find an incomplete cycle at the end of the data.
 
         Args:

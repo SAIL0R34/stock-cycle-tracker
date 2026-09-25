@@ -19,12 +19,16 @@ from __future__ import annotations
 import logging
 import secrets
 import time
-from typing import Any, Optional
+from typing import Any
 
 from stock_cycle_tracker.data.alpaca_client import AlpacaHTTPClient
-from stock_cycle_tracker.settings import settings
 from stock_cycle_tracker.trading.broker import BrokerClient, DisabledBrokerClient, get_broker
-from stock_cycle_tracker.trading.risk import RiskDecision, RiskLimits, check_bracket, pre_trade_check
+from stock_cycle_tracker.trading.risk import (
+    RiskDecision,
+    RiskLimits,
+    check_bracket,
+    pre_trade_check,
+)
 from stock_cycle_tracker.trading.trade_log import TradeLog
 
 logger = logging.getLogger("stock_cycle_tracker.trading.service")
@@ -46,7 +50,7 @@ class PaperTradingService:
             return self._broker_override
         return get_broker(getattr(config, "trading_enabled", False), self._client)
 
-    def _brief_for(self, result) -> Optional[dict[str, Any]]:
+    def _brief_for(self, result) -> dict[str, Any] | None:
         if result is None or result.decision_brief is None:
             return None
         brief = result.decision_brief

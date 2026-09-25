@@ -1,6 +1,6 @@
 """Analysis summary generation with comprehensive metrics."""
 
-from stock_cycle_tracker.models import AnalysisResult, SummaryStatistics
+from stock_cycle_tracker.models import AnalysisResult
 
 
 class AnalysisSummary:

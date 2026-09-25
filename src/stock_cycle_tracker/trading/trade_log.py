@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from stock_cycle_tracker.settings import settings
@@ -33,7 +33,7 @@ class TradeLog:
         self._conn.commit()
 
     def append(self, record: dict) -> None:
-        record = {"at": datetime.now(timezone.utc).isoformat(), **record}
+        record = {"at": datetime.now(UTC).isoformat(), **record}
         try:
             self._conn.execute(
                 "INSERT INTO events (at, payload) VALUES (?, ?)",

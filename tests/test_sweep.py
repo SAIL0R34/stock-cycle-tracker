@@ -4,7 +4,7 @@ import math
 from datetime import datetime, timedelta
 
 from stock_cycle_tracker.analytics.sweep import run_parameter_sweep
-from stock_cycle_tracker.models import Config, OHLCV
+from stock_cycle_tracker.models import OHLCV, Config
 
 
 def _candles(drift: float, bars: int = 400):

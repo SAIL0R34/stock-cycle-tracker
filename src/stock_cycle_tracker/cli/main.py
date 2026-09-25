@@ -1,7 +1,6 @@
 """CLI module for Stock Cycle Tracker."""
 
 import asyncio
-from typing import Optional
 
 import typer
 
@@ -109,7 +108,7 @@ def batch(
         pipeline = PipelineService()
         results = await pipeline.run_batch(symbol_list, timeframe.value, lookback)
 
-        for symbol, (result, files) in results.items():
+        for symbol, (result, _files) in results.items():
             print(f"\n{symbol}:")
             print(f"  Pivots: {result.metadata.total_pivots}")
             print(f"  Legs: {result.metadata.total_legs}")

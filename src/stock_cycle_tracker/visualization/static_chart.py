@@ -1,22 +1,20 @@
 """Static chart creation using matplotlib (optional dependency)."""
 
-from typing import Optional
 
-import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-from matplotlib.ticker import FuncFormatter
+import matplotlib.pyplot as plt
 
 from stock_cycle_tracker.models import OHLCV, PivotPoint, SwingLeg
 
 
 def create_static_chart(
     data: list[OHLCV],
-    pivots: Optional[list[PivotPoint]] = None,
-    legs: Optional[list[SwingLeg]] = None,
+    pivots: list[PivotPoint] | None = None,
+    legs: list[SwingLeg] | None = None,
     title: str = "BTC Swing Cycle Analysis",
     width: int = 12,
     height: int = 8,
-    save_path: Optional[str] = None,
+    save_path: str | None = None,
 ) -> None:
     """Create a static candlestick chart with matplotlib.
 
