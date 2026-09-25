@@ -273,11 +273,51 @@ export default function ControlPanel({ config, options, running, onChange, onRun
         </span>
       </label>
       <label className="check-row">
+        <input type="checkbox" checked={config.enable_tlt_correlation_analysis}
+          onChange={(e) => onChange({ enable_tlt_correlation_analysis: e.target.checked })} />
+        <span>
+          TLT (rates)
+          <HelpDot>Long-term Treasury ETF — when stocks fall, do money flow into bonds? The rates read.</HelpDot>
+        </span>
+      </label>
+      <label className="check-row">
+        <input type="checkbox" checked={config.enable_btc_correlation_analysis}
+          onChange={(e) => onChange({ enable_btc_correlation_analysis: e.target.checked })} />
+        <span>
+          Bitcoin
+          <HelpDot>Is this stock moving with the crypto risk trade or on its own fundamentals?</HelpDot>
+        </span>
+      </label>
+      <label className="check-row">
+        <input type="checkbox" checked={config.enable_vix_correlation_analysis}
+          onChange={(e) => onChange({ enable_vix_correlation_analysis: e.target.checked })} />
+        <span>
+          VIX
+          <HelpDot>The fear index. A stock that holds up when VIX spikes is showing real strength.</HelpDot>
+        </span>
+      </label>
+      <label className="check-row">
+        <input type="checkbox" checked={config.enable_dxy_correlation_analysis}
+          onChange={(e) => onChange({ enable_dxy_correlation_analysis: e.target.checked })} />
+        <span>
+          Dollar (DXY)
+          <HelpDot>A strong dollar squeezes multinationals and commodities; watch the inverse link.</HelpDot>
+        </span>
+      </label>
+      <label className="check-row">
         <input type="checkbox" checked={config.enable_gold_correlation_analysis}
           onChange={(e) => onChange({ enable_gold_correlation_analysis: e.target.checked })} />
         <span>
-          Gold correlation
+          Gold
           <HelpDot>Compare with gold futures — the classic safety-vs-risk gauge.</HelpDot>
+        </span>
+      </label>
+      <label className="check-row">
+        <input type="checkbox" checked={config.enable_moon_phase_analysis}
+          onChange={(e) => onChange({ enable_moon_phase_analysis: e.target.checked })} />
+        <span>
+          Moon phases
+          <HelpDot>Lunar cycles vs swing timing, plotted on price. Entertainment only — deliberately excluded from the decision engine.</HelpDot>
         </span>
       </label>
 

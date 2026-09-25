@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { AnalysisResult, AppConfig, Options } from './api/client';
-import { analysisApi, scanApi } from './api/client';
+import { analysisApi, scanApi, marketApi } from './api/client';
 import { apiError } from './lib/apiError';
 import ControlPanel from './components/ControlPanel';
 import PriceChart from './components/PriceChart';
@@ -17,11 +17,41 @@ import MarketHoursBanner from './components/MarketHoursBanner';
 import ScanTable from './components/ScanTable';
 import WatchlistEditor from './components/WatchlistEditor';
 import PaperTradingPanel from './components/PaperTradingPanel';
+import MoonPanel from './components/MoonPanel';
 import SettingsOverlay from './components/SettingsOverlay';
 import MoversTape from './components/MoversTape';
 import type { ScanPayload } from './api/client';
 
-type Tab = 'legs' | 'pivots' | 'crossasset' | 'insights';
+type Tab = 'legs' | 'pivots' | 'crossasset' | 'moon' | 'insights';
+
+/** Invisible driver: keeps the movers tape fresh while the market is open. */
+function MarketHoursAutoRefresh({
+  onScan, lastScanAt, inFlight,
+}: {
+  onScan: (payload: ScanPayload) => void;
+  lastScanAt: React.RefObject<number>;
+  inFlight: React.RefObject<boolean>;
+}) {
+  useEffect(() => {
+    const timer = setInterval(async () => {
+      if (inFlight.current) return;
+      try {
+        const hours = await marketApi.hours();
+        if (hours.data.phase !== 'open') return;
+        if (Date.now() - lastScanAt.current < 120_000) return;
+        inFlight.current = true;
+        const res = await scanApi.run();
+        onScan(res.data);
+      } catch {
+        /* closed market, throttled scan, or transient failure — next tick retries */
+      } finally {
+        inFlight.current = false;
+      }
+    }, 60_000);
+    return () => clearInterval(timer);
+  }, [onScan, lastScanAt, inFlight]);
+  return null;
+}
 
 // ── Layout customization ───────────────────────────────────────────────
 // Module ids in the main column; order + visibility persist to localStorage.
@@ -67,6 +97,12 @@ export default function App() {
   const [view, setView] = useState<'scan' | 'detail'>('scan');
   const [showSettings, setShowSettings] = useState(false);
   const [scan, setScan] = useState<ScanPayload | null>(null);
+  const lastScanAt = useRef(0);
+  const scanInFlight = useRef(false);
+  const onScanArrived = useCallback((payload: ScanPayload) => {
+    setScan(payload);
+    lastScanAt.current = Date.now();
+  }, []);
   const [customizing, setCustomizing] = useState(false);
   const [layout, setLayout] = useState(loadLayout);
   const bootedRef = useRef(false);
@@ -109,7 +145,7 @@ export default function App() {
       .then(res => setConfig(res.data))
       .catch(() => {});
     scanApi.status()
-      .then(res => { if (res.data.has_result) setScan(res.data); })
+      .then(res => { if (res.data.has_result) { setScan(res.data); lastScanAt.current = Date.now(); } })
       .catch(() => {});
     analysisApi.result()
       .then(res => setResult(res.data))
@@ -216,6 +252,9 @@ export default function App() {
           <button className={tab === 'crossasset' ? 'active' : ''} onClick={() => setTab('crossasset')}>
             Cross-asset{result && Object.keys(result.correlations || {}).length > 0 ? ` (${Object.keys(result.correlations).length})` : ''}
           </button>
+          <button className={tab === 'moon' ? 'active' : ''} onClick={() => setTab('moon')}>
+            Moon{result?.moon_phase_insight ? ` (${result.moon_phase_insight.total_events})` : ''}
+          </button>
           <button className={tab === 'insights' ? 'active' : ''} onClick={() => setTab('insights')}>
             Insights
           </button>
@@ -228,6 +267,7 @@ export default function App() {
             {tab === 'legs' && <div className="card"><LegsTable legs={result.legs} /></div>}
             {tab === 'pivots' && <div className="card"><PivotsTable pivots={result.pivots} /></div>}
             {tab === 'crossasset' && <CorrelationPanel result={result} onRerun={refreshFromServer} />}
+            {tab === 'moon' && <MoonPanel result={result} onRerun={refreshFromServer} />}
             {tab === 'insights' && <InsightPanel result={result} onRerun={refreshFromServer} />}
           </>
         )}
@@ -324,6 +364,11 @@ export default function App() {
 
       <MoversTape rows={scan?.rows ?? null} onSelect={openSymbol} />
 
+      {/* During regular trading hours the movers tape refreshes itself: a
+          cheap market-hours check every minute, then a scan (session-cached,
+          so warm scans are nearly free) at most every two minutes. */}
+      <MarketHoursAutoRefresh onScan={onScanArrived} lastScanAt={lastScanAt} inFlight={scanInFlight} />
+
       {exportMsg && (
         <div className="export-strip">
           <span style={{ color: 'var(--text-muted)' }}>{exportMsg}</span>
@@ -360,7 +405,7 @@ export default function App() {
           {view === 'scan' && (
             <>
               <MarketHoursBanner />
-              <ScanTable scan={scan} onScan={setScan} onSelect={openSymbol} />
+              <ScanTable scan={scan} onScan={onScanArrived} onSelect={openSymbol} />
               <WatchlistEditor onChanged={() => setScan(null)} />
               <div className="card" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 Pick a preset in the sidebar (Intraday / Swing / Position), manage the watchlist,

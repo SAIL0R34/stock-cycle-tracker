@@ -147,6 +147,10 @@ class AnalysisService:
         for key, enabled, name, symbol in (
             ("spy", self.config.enable_spy_correlation_analysis, "S&P 500 ETF", "SPY"),
             ("qqq", self.config.enable_qqq_correlation_analysis, "Nasdaq 100 ETF", "QQQ"),
+            ("tlt", self.config.enable_tlt_correlation_analysis, "20+ Yr Treasury (TLT)", "TLT"),
+            ("btc", self.config.enable_btc_correlation_analysis, "Bitcoin", "BTC-USD"),
+            ("vix", self.config.enable_vix_correlation_analysis, "VIX (volatility)", "^VIX"),
+            ("dxy", self.config.enable_dxy_correlation_analysis, "US Dollar Index", "DX-Y.NYB"),
             ("gold", self.config.enable_gold_correlation_analysis, "Gold", "GC=F"),
         ):
             if not enabled:
@@ -159,6 +163,14 @@ class AnalysisService:
                     correlation_insights[key] = insight
             except Exception as exc:  # noqa: BLE001 - surfaced to the UI
                 correlation_errors[key] = str(exc)
+
+        moon_phase_insight = None
+        if self.config.enable_moon_phase_analysis:
+            from stock_cycle_tracker.analytics.moon_phases import analyze_moon_phase_correlation
+
+            moon_phase_insight = analyze_moon_phase_correlation(
+                data=data, pivots=pivots, legs=legs, config=self.config,
+            )
 
         start_date = data[0].timestamp or datetime.now()
         end_date = data[-1].timestamp or datetime.now()
@@ -187,6 +199,7 @@ class AnalysisService:
             pattern_learning=pattern_learning,
             pattern_backtests=pattern_backtests,
             correlation_insights=correlation_insights,
+            moon_phase_insight=moon_phase_insight,
             structure_discoveries=structure_discoveries,
             forming_leg=forming_leg,
             correlation_errors=correlation_errors,

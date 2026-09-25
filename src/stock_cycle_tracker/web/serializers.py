@@ -87,6 +87,7 @@ def serialize_result(
         "forming_leg": result.forming_leg.model_dump(mode="json") if result.forming_leg else None,
         "decision_brief": result.decision_brief.model_dump(mode="json") if result.decision_brief else None,
         "correlation_errors": result.correlation_errors,
+        "moon_phase_insight": result.moon_phase_insight.model_dump(mode="json") if result.moon_phase_insight else None,
     }
     if include_candles:
         payload["candles"] = serialize_candles(result.raw_data, max_candles)

@@ -266,6 +266,41 @@ export interface DecisionBrief {
   track_record?: DecisionTrackRecord | null;
 }
 
+export interface MoonPhaseEventPoint {
+  timestamp: string;
+  phase_name: string;
+  phase_code: string;
+  phase_fraction: number;
+  nearest_pivot_type: string | null;
+  hours_to_nearest_pivot: number | null;
+  aligned_within_window: boolean;
+  next_leg_direction: string | null;
+  next_leg_percent_change: number | null;
+}
+
+export interface MoonPhaseInsight {
+  phase_window_hours: number;
+  total_events: number;
+  aligned_events: number;
+  alignment_rate: number;
+  avg_hours_to_pivot: number | null;
+  strongest_phase: string | null;
+  strongest_bias: string | null;
+  strongest_bias_score: number;
+  summary: string;
+  events: MoonPhaseEventPoint[];
+  phase_stats: Array<{
+    phase_name: string;
+    occurrences: number;
+    alignment_rate: number;
+    swing_high_rate: number;
+    swing_low_rate: number;
+    bullish_next_leg_rate: number;
+    bearish_next_leg_rate: number;
+    dominant_bias: string;
+  }>;
+}
+
 export interface AnalysisResult {
   metadata: Metadata;
   summary: Summary;
@@ -280,6 +315,7 @@ export interface AnalysisResult {
   forming_leg: Leg | null;
   decision_brief: DecisionBrief | null;
   correlation_errors: Record<string, string>;
+  moon_phase_insight: MoonPhaseInsight | null;
 }
 
 export interface AppConfig {
@@ -306,6 +342,10 @@ export interface AppConfig {
   enable_moon_phase_analysis: boolean;
   enable_spy_correlation_analysis: boolean;
   enable_qqq_correlation_analysis: boolean;
+  enable_tlt_correlation_analysis: boolean;
+  enable_btc_correlation_analysis: boolean;
+  enable_vix_correlation_analysis: boolean;
+  enable_dxy_correlation_analysis: boolean;
   enable_gold_correlation_analysis: boolean;
   [key: string]: unknown;
 }

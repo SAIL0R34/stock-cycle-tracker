@@ -161,6 +161,8 @@ def _tool_get_insights(args: dict, ctx: ChatContext) -> dict:
         out["pattern_learning"] = result.pattern_learning.model_dump(mode="json")
     for name, insight in result.correlation_insights.items():
         out[f"{name}_correlation"] = insight.model_dump(mode="json")
+    if result.moon_phase_insight:
+        out["moon_phase"] = result.moon_phase_insight.model_dump(mode="json")
     if not out:
         return _ok(note="No optional insights are enabled. Pattern recognition / correlations can be turned on via update_config.")
     return _ok(**out)
@@ -326,7 +328,7 @@ TOOLS: dict[str, Tool] = {t.name: t for t in [
     Tool("run_analysis", _tool_run_analysis, True,
          f"run_analysis(symbol?, timeframe?, lookback?) — fetch fresh data and run the full pipeline. timeframe one of {'/'.join(_TIMEFRAMES)}; lookback like 30d/12w/6m/1y."),
     Tool("update_config", _tool_update_config, True,
-         "update_config(<field>=<value>, ...) — change settings, e.g. pivot_method (zigzag/fractal/fixed_window), min_move_pct, left_bars, right_bars, use_atr_filter, atr_period, atr_multiplier, enable_pattern_recognition, pattern_length, enable_spy_correlation_analysis, enable_qqq_correlation_analysis, enable_gold_correlation_analysis."),
+         "update_config(<field>=<value>, ...) — change settings, e.g. pivot_method (zigzag/fractal/fixed_window), min_move_pct, left_bars, right_bars, use_atr_filter, atr_period, atr_multiplier, enable_pattern_recognition, pattern_length, enable_spy_correlation_analysis, enable_qqq_correlation_analysis, enable_tlt_correlation_analysis, enable_btc_correlation_analysis, enable_vix_correlation_analysis, enable_dxy_correlation_analysis, enable_gold_correlation_analysis, enable_moon_phase_analysis."),
     Tool("watchlist_add", _tool_watchlist_add, True,
          "watchlist_add(symbols=[\"AAPL\", ...]) — add tickers to the watchlist (validated ticker shapes only)."),
     Tool("watchlist_remove", _tool_watchlist_remove, True,

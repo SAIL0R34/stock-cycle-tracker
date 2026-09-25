@@ -276,6 +276,53 @@ class PatternLearningSummary(BaseModel):
     median_next_duration_bars: float | None = None
 
 
+class MoonPhaseEvent(BaseModel):
+    """A major moon-phase timestamp and its nearest swing response."""
+
+    timestamp: datetime
+    phase_name: str
+    phase_code: str
+    phase_fraction: float
+    nearest_pivot_timestamp: datetime | None = None
+    nearest_pivot_type: str | None = None
+    nearest_pivot_price: float | None = None
+    hours_to_nearest_pivot: float | None = None
+    aligned_within_window: bool = False
+    next_leg_direction: str | None = None
+    next_leg_percent_change: float | None = None
+    next_leg_duration_bars: int | None = None
+
+
+class MoonPhasePhaseStats(BaseModel):
+    """Aggregate behavior following a given moon phase."""
+
+    phase_name: str
+    occurrences: int
+    aligned_events: int
+    alignment_rate: float
+    swing_high_rate: float = 0.0
+    swing_low_rate: float = 0.0
+    bullish_next_leg_rate: float = 0.0
+    bearish_next_leg_rate: float = 0.0
+    dominant_bias: str = "balanced"
+
+
+class MoonPhaseInsight(BaseModel):
+    """Correlation summary between major moon phases and swings."""
+
+    phase_window_hours: float
+    total_events: int
+    aligned_events: int
+    alignment_rate: float
+    avg_hours_to_pivot: float | None = None
+    strongest_phase: str | None = None
+    strongest_bias: str | None = None
+    strongest_bias_score: float = 0.0
+    summary: str
+    events: list[MoonPhaseEvent] = []
+    phase_stats: list[MoonPhasePhaseStats] = []
+
+
 class AssetCorrelationObservation(BaseModel):
     """Aligned BTC/external-asset datapoint for correlation charts."""
 
@@ -492,6 +539,7 @@ class AnalysisResult(BaseModel):
     pattern_learning: PatternLearningSummary | None = None
     pattern_backtests: list[PatternBacktestRecord] = Field(default_factory=list)
     correlation_insights: dict[str, AssetCorrelationInsight] = Field(default_factory=dict)
+    moon_phase_insight: MoonPhaseInsight | None = None
     structure_discoveries: list[StructureDiscovery] = Field(default_factory=list)
     forming_leg: SwingLeg | None = None
     decision_brief: DecisionBrief | None = None
@@ -546,7 +594,12 @@ class Config(BaseModel):
     decision_memory_max_records: int = 1000
     enable_spy_correlation_analysis: bool = True
     enable_qqq_correlation_analysis: bool = True
+    enable_tlt_correlation_analysis: bool = False
+    enable_btc_correlation_analysis: bool = False
+    enable_vix_correlation_analysis: bool = False
+    enable_dxy_correlation_analysis: bool = False
     enable_gold_correlation_analysis: bool = False
+    enable_moon_phase_analysis: bool = False
 
     @field_validator("lookback_period")
     @classmethod
