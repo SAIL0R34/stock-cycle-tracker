@@ -1,4 +1,4 @@
-import type { ScanRow } from '../api/client';
+import type { MoverRow, ScanRow } from '../api/client';
 import HelpDot from './HelpDot';
 
 /**
@@ -8,36 +8,48 @@ import HelpDot from './HelpDot';
  * Click a ticker to open its dashboard. Pauses on hover.
  */
 export default function MoversTape({
-  rows, onSelect,
+  rows, movers: fallbackMovers, onSelect,
 }: {
   rows: ScanRow[] | null;
+  movers?: MoverRow[] | null;
   onSelect: (symbol: string) => void;
 }) {
-  const clean = (rows || []).filter(r => !r.error && r.forming_pct != null);
-  const byMove = [...clean].sort((a, b) => (b.forming_pct ?? 0) - (a.forming_pct ?? 0));
-  const gainers = byMove.slice(0, 4);
-  const losers = byMove.slice(-4).reverse().filter(r => (r.forming_pct ?? 0) < 0);
-  const movers = [...gainers, ...losers];
+  // Prefer scan rows (forming swing %); fall back to keyless 1-day movers
+  // so the carousel is never empty while waiting for data/keys.
+  const scanRows = (rows || []).filter(r => !r.error && r.forming_pct != null);
+  let movers: Array<{ symbol: string; pct: number }>;
+  if (scanRows.length) {
+    const byMove = [...scanRows].sort((a, b) => (b.forming_pct ?? 0) - (a.forming_pct ?? 0));
+    const gainers = byMove.slice(0, 4);
+    const losers = byMove.slice(-4).reverse().filter(r => (r.forming_pct ?? 0) < 0);
+    movers = [...gainers, ...losers].map(r => ({ symbol: r.symbol, pct: r.forming_pct ?? 0 }));
+  } else {
+    const byMove = [...(fallbackMovers || [])].sort((a, b) => b.change_pct - a.change_pct);
+    const gainers = byMove.slice(0, 5);
+    const losers = byMove.slice(-5).reverse().filter(r => r.change_pct < 0);
+    movers = [...gainers, ...losers].map(r => ({ symbol: r.symbol, pct: r.change_pct }));
+  }
 
   if (!movers.length) {
     return (
       <div className="tape-strip">
         <span className="muted" style={{ fontSize: '0.7rem' }}>
-          Movers tape — run a scan to see the watchlist's strongest and weakest moves
+          Movers tape — fetching the watchlist's latest moves…
         </span>
       </div>
     );
   }
 
+  const useScan = scanRows.length > 0;
   const items = movers.map(row => {
-    const pct = row.forming_pct ?? 0;
+    const pct = row.pct;
     const up = pct >= 0;
     return (
       <button
         key={row.symbol}
         className={`tape-item ${up ? 'up' : 'down'}`}
         onClick={() => onSelect(row.symbol)}
-        title={`${row.symbol}: forming move ${pct >= 0 ? '+' : ''}${pct.toFixed(2)}% · decision ${row.action.replace('_', ' ')} (${row.composite_score >= 0 ? '+' : ''}${row.composite_score.toFixed(0)}) — click to open`}
+        title={`${row.symbol}: ${useScan ? 'forming swing move' : '1-day change'} ${pct >= 0 ? '+' : ''}${pct.toFixed(2)}% — click to open`}
       >
         <strong>{row.symbol}</strong>
         <span className={up ? 'dir-up' : 'dir-down'}>

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { AnalysisResult, AppConfig, Options } from './api/client';
 import { analysisApi, scanApi, marketApi } from './api/client';
+import type { MoverRow } from './api/client';
 import { apiError } from './lib/apiError';
 import ControlPanel from './components/ControlPanel';
 import PriceChart from './components/PriceChart';
@@ -97,6 +98,7 @@ export default function App() {
   const [view, setView] = useState<'scan' | 'detail'>('scan');
   const [showSettings, setShowSettings] = useState(false);
   const [scan, setScan] = useState<ScanPayload | null>(null);
+  const [movers, setMovers] = useState<MoverRow[] | null>(null);
   const lastScanAt = useRef(0);
   const scanInFlight = useRef(false);
   const onScanArrived = useCallback((payload: ScanPayload) => {
@@ -147,6 +149,11 @@ export default function App() {
     scanApi.status()
       .then(res => { if (res.data.has_result) { setScan(res.data); lastScanAt.current = Date.now(); } })
       .catch(() => {});
+    const loadMovers = () => marketApi.movers()
+      .then(res => setMovers(res.data.rows))
+      .catch(() => {});
+    loadMovers();
+    const moversTimer = setInterval(loadMovers, 300_000);
     analysisApi.result()
       .then(res => setResult(res.data))
       .catch(() => {
@@ -162,6 +169,7 @@ export default function App() {
           setTimeout(() => clearInterval(wait), 15000);
         }
       });
+    return () => clearInterval(moversTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -362,7 +370,7 @@ export default function App() {
         </div>
       </header>
 
-      <MoversTape rows={scan?.rows ?? null} onSelect={openSymbol} />
+      <MoversTape rows={scan?.rows ?? null} movers={movers} onSelect={openSymbol} />
 
       {/* During regular trading hours the movers tape refreshes itself: a
           cheap market-hours check every minute, then a scan (session-cached,

@@ -413,7 +413,20 @@ export interface TradingPreview {
   expires_in_seconds?: number;
 }
 
+export interface MoverRow {
+  symbol: string;
+  change_pct: number;
+  last: number;
+}
+
+export interface MoversPayload {
+  rows: MoverRow[];
+  fetched_at: string;
+  market_phase: string;
+}
+
 export const marketApi = {
+  movers: () => api.get<MoversPayload>('/movers'),
   hours: () => api.get<MarketHours>('/market-hours'),
 };
 

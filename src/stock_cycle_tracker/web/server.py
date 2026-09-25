@@ -27,12 +27,15 @@ from stock_cycle_tracker.web.serializers import (
     serialize_result,
 )
 from stock_cycle_tracker.web.state import STATE
+from datetime import datetime
+
 from stock_cycle_tracker.trading.service import PaperTradingService
 from stock_cycle_tracker.web.secrets_store import secrets_store
-from stock_cycle_tracker.watchlist.scanner import ScanService
+from stock_cycle_tracker.watchlist.scanner import ScanService, fetch_yahoo_movers
 from stock_cycle_tracker.watchlist.store import WatchlistStore
 
 SCANNER = ScanService()
+MAX_TAPE_SYMBOLS = 12
 PAPER = PaperTradingService()
 
 logger = logging.getLogger("stock_cycle_tracker.web")
@@ -111,6 +114,21 @@ async def run_scan():
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=500, detail=f"Scan failed: {exc}") from exc
     return result.to_dict()
+
+
+@app.get("/api/movers")
+async def movers():
+    """Keyless 1-day movers for the tape (Yahoo daily closes, cached 5 min).
+    Used when no scan exists yet so the carousel is never empty."""
+    from stock_cycle_tracker.data.market_hours import MarketHoursService
+
+    symbols = WatchlistStore().load()[:MAX_TAPE_SYMBOLS]
+    rows = await asyncio.to_thread(fetch_yahoo_movers, symbols)
+    return {
+        "rows": rows,
+        "fetched_at": datetime.utcnow().isoformat(),
+        "market_phase": MarketHoursService().phase()["phase"],
+    }
 
 
 @app.get("/api/scan/status")

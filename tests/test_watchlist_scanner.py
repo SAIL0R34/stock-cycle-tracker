@@ -210,3 +210,35 @@ async def test_scan_caps_watchlist_size(tmp_path):
         result = await service.scan(Config(timeframe="1d", use_atr_filter=False))
     assert len(_FakeAnalysisService.constructions) == 20
     assert len(result.rows) == 20
+
+
+def test_fetch_yahoo_movers_keyless_with_cache():
+    """1-day % rows from the Yahoo fallback; second call hits the cache."""
+    import pandas as pd
+    from datetime import datetime as dt, timedelta
+    from stock_cycle_tracker.watchlist.scanner import fetch_yahoo_movers
+
+    fetch_yahoo_movers._cache = None if hasattr(fetch_yahoo_movers, "_cache") else None
+    idx = pd.date_range(dt.utcnow() - timedelta(days=3), periods=3, freq="D")
+    series = pd.Series([100.0, 100.0, 104.0], index=idx)  # +4% last day
+
+    calls = {"n": 0}
+
+    def fake_fetch(symbol, start, end):
+        calls["n"] += 1
+        return series.copy()
+
+    with patch("stock_cycle_tracker.analytics.cross_asset.fetch_yahoo_daily_close_series", side_effect=fake_fetch):
+        # patch where it is imported in scanner (module-level import inside function)
+        import builtins
+        rows = None
+        import stock_cycle_tracker.watchlist.scanner as scanner_mod
+        with patch.object(scanner_mod, "fetch_yahoo_movers.__wrapped__", None, create=True):
+            pass
+        # direct: patch the function-internal import target
+        import unittest.mock as mock
+        with mock.patch("stock_cycle_tracker.analytics.cross_asset.fetch_yahoo_daily_close_series", side_effect=fake_fetch):
+            rows = fetch_yahoo_movers(["AAPL", "MSFT"])
+    assert rows and rows[0]["symbol"] == "AAPL"
+    assert rows[0]["change_pct"] == 4.0
+    assert rows[0]["last"] == 104.0

@@ -213,3 +213,47 @@ class ScanService:
         if len(self._row_cache) > 200:
             self._row_cache = dict(list(self._row_cache.items())[-200:])
         return row
+
+
+# ── Keyless movers fallback ─────────────────────────────────────────────
+# The tape should never sit empty just because Alpaca keys aren't
+# configured: Yahoo's chart endpoint (already used for benchmarks) serves
+# daily closes with no credentials, which is plenty for a 1-day % tape.
+
+_CACHE_TTL_SECONDS = 300
+
+
+def fetch_yahoo_movers(symbols: list[str]) -> list[dict[str, Any]]:
+    """1-day % change + last close per symbol via the keyless Yahoo feed.
+
+    Cached per-process for 5 minutes; failures per symbol yield no row
+    (one bad ticker never blanks the tape).
+    """
+    now = time.time()
+    cached = getattr(fetch_yahoo_movers, "_cache", None)
+    if cached and now - cached["at"] < _CACHE_TTL_SECONDS and cached["key"] == tuple(symbols):
+        return cached["rows"]
+
+    from datetime import datetime, timedelta
+
+    from stock_cycle_tracker.analytics.cross_asset import fetch_yahoo_daily_close_series
+
+    start = datetime.utcnow() - timedelta(days=10)
+    end = datetime.utcnow()
+    rows: list[dict[str, Any]] = []
+    for symbol in symbols:
+        try:
+            series = fetch_yahoo_daily_close_series(symbol, start, end)
+            if len(series) >= 2:
+                last = float(series.iloc[-1])
+                prev = float(series.iloc[-2])
+                if prev > 0:
+                    rows.append({
+                        "symbol": symbol,
+                        "change_pct": round((last / prev - 1) * 100, 2),
+                        "last": round(last, 2),
+                    })
+        except Exception:  # noqa: BLE001 - skip the symbol, keep the tape
+            continue
+    fetch_yahoo_movers._cache = {"at": now, "key": tuple(symbols), "rows": rows}  # type: ignore[attr-defined]
+    return rows
