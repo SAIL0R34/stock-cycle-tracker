@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import api from '../api/client';
 import type { AnalysisResult, PatternInsight, PatternLearning } from '../api/client';
 import { analysisApi } from '../api/client';
 import { apiError } from '../lib/apiError';
@@ -265,6 +266,91 @@ export default function InsightPanel({ result, onRerun }: { result: AnalysisResu
         />
       )}
 
+      <SweepCard result={result} />
+    </div>
+  );
+}
+
+
+interface SweepPayload {
+  rows: Array<{ label: string; legs: number; action: string; composite_score: number; conviction: number }>;
+  agreement_rate: number;
+  score_std: number;
+  verdict: string;
+  note: string;
+}
+
+function SweepCard({ result }: { result: AnalysisResult }) {
+  const [report, setReport] = useState<SweepPayload | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  async function run() {
+    if (busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      const res = await api.post<SweepPayload>('/sweep', {}, { timeout: 180000 });
+      setReport(res.data);
+    } catch (err) {
+      setError(apiError(err, 'Sweep failed.'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const tone = report?.verdict === 'robust' ? 'var(--up)' : report?.verdict === 'fragile' ? 'var(--down)' : 'var(--warning)';
+  return (
+    <div className="card">
+      <div className="card-head">
+        <h3 style={{ margin: 0 }}>
+          Parameter sweep
+          <HelpDot>
+            Re-runs the decision across a grid of pivot settings. If most configurations agree, the
+            call is robust; if they flip, the score is an artifact of one setting — anti-curve-fitting
+            as a measurement, not a promise.
+          </HelpDot>
+        </h3>
+        <button className="btn btn-secondary" style={{ fontSize: '0.75rem' }} onClick={run} disabled={busy}>
+          {busy ? 'Sweeping…' : 'Run sweep'}
+        </button>
+      </div>
+      {error && <div className="error-banner">{error}</div>}
+      {report && (
+        <>
+          <div className="tile-grid" style={{ marginBottom: '0.4rem' }}>
+            <div className="tile">
+              <div className="label">Verdict</div>
+              <div className="value" style={{ color: tone }}>{report.verdict}</div>
+              <div className="sub">{(report.agreement_rate * 100).toFixed(0)}% agreement</div>
+            </div>
+            <div className="tile">
+              <div className="label">Score dispersion</div>
+              <div className="value">±{report.score_std.toFixed(1)}</div>
+              <div className="sub">across {report.rows.length} configs</div>
+            </div>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table">
+              <thead><tr><th>Config</th><th>Legs</th><th>Action</th><th>Score</th><th>Conviction</th></tr></thead>
+              <tbody>
+                {report.rows.map((r, i) => (
+                  <tr key={i}>
+                    <td>{r.label}</td>
+                    <td>{r.legs}</td>
+                    <td style={{ color: r.action.includes('invest') ? 'var(--up)' : r.action.includes('divest') ? 'var(--down)' : undefined }}>
+                      {r.action.replace('_', ' ')}
+                    </td>
+                    <td>{r.composite_score >= 0 ? '+' : ''}{r.composite_score.toFixed(0)}</td>
+                    <td>{(r.conviction * 100).toFixed(0)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>{report.note}</div>
+        </>
+      )}
     </div>
   );
 }

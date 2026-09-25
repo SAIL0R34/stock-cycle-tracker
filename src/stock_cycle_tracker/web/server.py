@@ -29,6 +29,7 @@ from stock_cycle_tracker.web.serializers import (
 from stock_cycle_tracker.web.state import STATE
 from datetime import datetime
 
+from stock_cycle_tracker.analytics.sweep import run_parameter_sweep
 from stock_cycle_tracker.trading.service import PaperTradingService
 from stock_cycle_tracker.web.secrets_store import secrets_store
 from stock_cycle_tracker.watchlist.scanner import ScanService, fetch_yahoo_movers
@@ -496,6 +497,16 @@ async def test_settings():
 # ---------------------------------------------------------------------------
 # Paper trading (preview -> explicit confirm -> Alpaca paper order)
 # ---------------------------------------------------------------------------
+
+
+@app.post("/api/sweep")
+async def parameter_sweep():
+    """Sweep pivot parameters on the current result's candles and report
+    decision stability (robust / mixed / fragile)."""
+    if STATE.result is None:
+        raise HTTPException(status_code=400, detail="Run an analysis first.")
+    report = await asyncio.to_thread(run_parameter_sweep, STATE.result.raw_data, STATE.config)
+    return report.to_dict()
 
 
 @app.get("/api/trading/status")
