@@ -201,6 +201,69 @@ class AlpacaHTTPClient:
             if not page_token:
                 return bars
 
+    def compare_feeds(
+        self,
+        symbol: str,
+        timeframe: str,
+        start: datetime,
+        end: datetime,
+    ) -> dict[str, Any]:
+        """Fetch the same window from IEX and SIP and diff the bars.
+
+        Returns per-feed candle counts, close-series correlation, max close
+        divergence in %, and a divergence verdict. SIP requires a paid data
+        subscription; without one the SIP leg errors and is reported as
+        unavailable rather than silently skipped."""
+        def fetch(feed: str) -> tuple[list[dict[str, Any]] | None, str | None]:
+            try:
+                return self._request(
+                    "GET", f"{DATA_HOST}/v2/stocks/{symbol}/bars",
+                    params={
+                        "start": int(start.replace(tzinfo=timezone.utc).timestamp()),
+                        "end": int(end.replace(tzinfo=timezone.utc).timestamp()),
+                        "timeframe": timeframe,
+                        "adjustment": "split",
+                        "feed": feed,
+                        "limit": 10000,
+                    },
+                ).get("bars", []), None
+            except Exception as exc:  # noqa: BLE001 - surfaced in the payload
+                return None, str(exc)
+
+        iex_bars, iex_err = fetch("iex")
+        sip_bars, sip_err = fetch("sip")
+
+        result: dict[str, Any] = {
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "iex": {"bars": len(iex_bars) if iex_bars is not None else None, "error": iex_err},
+            "sip": {"bars": len(sip_bars) if sip_bars is not None else None, "error": sip_err},
+        }
+        if iex_bars is None or sip_bars is None:
+            result["note"] = "Feed comparison needs both feeds; resolve the reported error(s)."
+            return result
+
+        # Align on shared timestamps.
+        iex_by_ts = {b["t"]: float(b["c"]) for b in iex_bars}
+        sip_by_ts = {b["t"]: float(b["c"]) for b in sip_bars}
+        shared = sorted(set(iex_by_ts) & set(sip_by_ts))
+        result["shared_bars"] = len(shared)
+        if len(shared) < 2:
+            result["note"] = "Too few shared candles to compare."
+            return result
+
+        diffs = [abs(iex_by_ts[t] - sip_by_ts[t]) / sip_by_ts[t] * 100 for t in shared]
+        mean_diff = sum(diffs) / len(diffs)
+        result["mean_close_divergence_pct"] = round(mean_diff, 4)
+        result["max_close_divergence_pct"] = round(max(diffs), 4)
+        result["coverage_iex_pct"] = round(len(shared) / max(len(sip_by_ts), 1) * 100, 1)
+        result["verdict"] = (
+            "negligible" if mean_diff < 0.05
+            else "minor" if mean_diff < 0.25
+            else "material — IEX prints diverge; prefer SIP for this timeframe"
+        )
+        return result
+
     def get_snapshots(self, symbols: list[str]) -> dict[str, dict[str, Any]]:
         """Batched latest snapshot (quote/trade/daily bars) for many symbols."""
         if not symbols:

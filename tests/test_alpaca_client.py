@@ -184,3 +184,24 @@ async def test_fetcher_tolerates_regular_hours_disabled():
     with patch.object(fetcher.client, "get_bars", return_value=bars):
         out = await fetcher.fetch_ohlcv("AAPL", Timeframe.FIVE_MINUTE, datetime(2026, 1, 7), datetime(2026, 1, 8))
     assert len(out) == 1
+
+
+def test_compare_feeds_divergence_math():
+    client = _client()
+    base = 1767283200
+    iex = {"bars": [{"t": base + i * 3600, "c": 100 + i} for i in range(10)]}
+    sip = {"bars": [{"t": base + i * 3600, "c": (100 + i) * 1.001} for i in range(10)]}  # +0.1%
+    with patch.object(client, "_request", side_effect=[iex, sip]):
+        out = client.compare_feeds("AAPL", "1Hour", datetime(2026, 1, 1), datetime(2026, 1, 2))
+    assert out["shared_bars"] == 10
+    assert 0.09 < out["mean_close_divergence_pct"] < 0.11
+    assert out["verdict"] == "minor"
+
+
+def test_compare_feeds_reports_sip_unavailable():
+    client = _client()
+    iex = {"bars": [{"t": 1767283200, "c": 100}]}
+    with patch.object(client, "_request", side_effect=[iex, RuntimeError("SIP not subscribed")]):
+        out = client.compare_feeds("AAPL", "1Hour", datetime(2026, 1, 1), datetime(2026, 1, 2))
+    assert out["sip"]["error"] and "SIP" in out["sip"]["error"]
+    assert "note" in out

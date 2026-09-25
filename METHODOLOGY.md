@@ -274,3 +274,30 @@ before live ones (live history is irreplaceable, replay is re-seedable).
   decision candle (`grading_mode="bars"`), so weekends and holidays consume
   zero horizon — a Friday decision doesn't wait three calendar days for its
   outcome window.
+
+
+## Data feeds: IEX vs SIP
+
+The app defaults to Alpaca's **IEX feed** (free): it carries only the
+Investors Exchange's own volume — roughly 2–3% of consolidated US equity
+volume. SIP (the paid consolidated feed) aggregates every exchange.
+
+**What that means for this engine:**
+
+- *Daily and 4h bars*: IEX closes track consolidated closes closely for
+  liquid names (typically < 0.05% divergence); swing calls are effectively
+  identical.
+- *Intraday bars (≤ 30m)*: thin IEX volume means real print gaps and
+  occasional close divergence vs SIP. The reversal-threshold detector is
+  robust to missing candles (session gaps stay gaps), but *where* a pivot
+  confirms can shift by a bar or two, and very small swings can appear or
+  disappear entirely.
+- *Grading*: decision outcomes are measured on the same feed they were
+  placed on, so IEX-vs-SIP divergence does not corrupt the track record —
+  it limits how finely intraday structure can be resolved.
+
+`AlpacaHTTPClient.compare_feeds(symbol, timeframe, start, end)` quantifies
+this for any symbol/window: it fetches both feeds, aligns timestamps, and
+reports shared-bar coverage, mean/max close divergence, and a verdict
+(`negligible` / `minor` / `material`). If your intraday results matter to
+the tick, run it once per symbol — and consider a SIP subscription.
