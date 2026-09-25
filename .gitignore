@@ -41,9 +41,13 @@ Thumbs.db
 /data/
 !/data/.gitkeep
 
-# Outputs — analysis runs and learning memory are runtime state
+# Outputs — analysis runs, learning memory, trade logs are runtime state
 outputs/*
 !outputs/.gitkeep
+*.db
+*.db-wal
+*.db-shm
+*.jsonl
 
 # Logs
 /logs/

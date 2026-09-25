@@ -33,6 +33,8 @@ from __future__ import annotations
 
 import json
 import logging
+import sqlite3
+import threading
 from bisect import bisect_left
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -102,35 +104,93 @@ def hold_band_pct(summary: SummaryStatistics | None, horizon: int) -> float:
 
 
 class DecisionMemoryStore:
-    """JSON-persisted log of decisions and their graded outcomes."""
+    """SQLite-persisted log of decisions and their graded outcomes.
+
+    WAL mode keeps concurrent readers safe while a run writes; the public
+    API (records / log_* / grade_* / adaptive_weights / track record) is
+    unchanged from the JSON era, and ``export_json`` preserves the old
+    on-disk shape for portability. Writes serialize on a process-wide
+    lock so parallel symbol runs can't interleave transactions.
+    """
+
+    _WRITE_LOCK = threading.Lock()
 
     def __init__(self, output_dir: str, max_records: int = MAX_RECORDS_DEFAULT):
-        self.path: Path = settings.resolve_app_path(output_dir) / "decision_memory.json"
+        self.path: Path = settings.resolve_app_path(output_dir) / "decision_memory.db"
         self.max_records = max(100, max_records)
+        self._conn = self._connect()
         self._records: list[DecisionRecord] = self._load()
+        if not self._records:
+            self._migrate_legacy_json()
 
     # ── Persistence ──────────────────────────────────────────────────
 
+    def _connect(self) -> sqlite3.Connection:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(str(self.path), check_same_thread=False)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS records ("
+            " decision_id TEXT PRIMARY KEY,"
+            " seq INTEGER,"           # insertion order
+            " payload TEXT NOT NULL)" # full DecisionRecord JSON
+        )
+        conn.commit()
+        return conn
+
     def _load(self) -> list[DecisionRecord]:
         try:
-            if self.path.exists():
-                data = json.loads(self.path.read_text())
-                records = [DecisionRecord.model_validate(r) for r in data.get("records", [])]
-                return records[-self.max_records :]
-        except Exception as exc:  # noqa: BLE001 - corrupt file shouldn't kill runs
-            logger.warning("Ignoring corrupt decision memory (%s): %s", self.path, exc)
+            rows = self._conn.execute(
+                "SELECT payload FROM records ORDER BY seq, rowid"
+            ).fetchall()
+            records = [DecisionRecord.model_validate(json.loads(row[0])) for row in rows]
+            return records[-self.max_records :]
+        except Exception as exc:  # noqa: BLE001 - corrupt db shouldn't kill runs
+            logger.warning("Ignoring unreadable decision memory (%s): %s", self.path, exc)
         return []
 
     def _save(self) -> None:
         self._trim()
-        payload = {"version": 1, "records": [r.model_dump(mode="json") for r in self._records]}
+        with DecisionMemoryStore._WRITE_LOCK:
+            try:
+                self._conn.execute("DELETE FROM records")
+                self._conn.executemany(
+                    "INSERT INTO records (decision_id, seq, payload) VALUES (?, ?, ?)",
+                    [
+                        (r.decision_id, i, r.model_dump_json())
+                        for i, r in enumerate(self._records)
+                    ],
+                )
+                self._conn.commit()
+            except Exception as exc:  # noqa: BLE001 - persistence is best-effort
+                logger.warning("Could not persist decision memory: %s", exc)
+
+    def _migrate_legacy_json(self) -> None:
+        """One-time import of the pre-SQLite decision_memory.json."""
+        legacy = self.path.with_suffix(".json")
+        if not legacy.exists():
+            return
         try:
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            tmp = self.path.with_suffix(".json.tmp")
-            tmp.write_text(json.dumps(payload, indent=2))
-            tmp.replace(self.path)
-        except Exception as exc:  # noqa: BLE001 - persistence is best-effort
-            logger.warning("Could not persist decision memory: %s", exc)
+            data = json.loads(legacy.read_text())
+            records = [DecisionRecord.model_validate(r) for r in data.get("records", [])]
+            if records:
+                self._records = records[-self.max_records :]
+                self._save()
+                legacy.rename(legacy.with_suffix(".json.migrated"))
+                logger.info("Migrated %d legacy decision records to SQLite", len(records))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Legacy decision memory not migrated: %s", exc)
+
+    def export_json(self, path: Path | None = None) -> Path:
+        """Dump the store in the legacy JSON shape (portability/backup)."""
+        target = path or self.path.with_suffix(".json")
+        target.write_text(
+            json.dumps(
+                {"version": 2, "records": [r.model_dump(mode="json") for r in self._records]},
+                indent=2,
+            )
+        )
+        return target
 
     def _trim(self) -> None:
         """Bound the log, evicting the oldest *replay* records first —

@@ -440,3 +440,47 @@ def test_bars_mode_not_mature_with_too_few_future_candles(tmp_path):
     later = _candles(bars=max(1, record.horizon_bars - 5), start=later_start)
     store.grade_pending(data + later, record.symbol, record.timeframe)
     assert record.graded_at is None  # horizon not yet filled by candles
+
+
+def test_store_persists_across_instances_sqlite(tmp_path):
+    """SQLite backend: a fresh store instance sees prior records."""
+    store = DecisionMemoryStore(str(tmp_path))
+    data = _candles(bars=200)
+    _live_record(store, data)
+    reloaded = DecisionMemoryStore(str(tmp_path))
+    assert len(reloaded.records) == 1
+    assert reloaded.records[0].decision_id == store.records[0].decision_id
+
+
+def test_store_migration_from_legacy_json(tmp_path):
+    """A pre-SQLite decision_memory.json is adopted on first open."""
+    import json as _json
+    legacy = tmp_path / "decision_memory.json"
+    data = _candles(bars=200)
+    store = DecisionMemoryStore(str(tmp_path))
+    rec = _live_record(store, data)
+    store.export_json(legacy)
+    # simulate legacy-only state: remove the db, keep the json
+    (tmp_path / "decision_memory.db").unlink()
+    for suffix in ("-wal", "-shm"):
+        extra = tmp_path / f"decision_memory.db{suffix}"
+        if extra.exists():
+            extra.unlink()
+    fresh = DecisionMemoryStore(str(tmp_path))
+    assert len(fresh.records) == 1
+    assert fresh.records[0].decision_id == rec.decision_id
+    assert not legacy.exists() and (tmp_path / "decision_memory.json.migrated").exists()
+
+
+def test_trade_log_sqlite_roundtrip(tmp_path):
+    from stock_cycle_tracker.trading.trade_log import TradeLog
+
+    log = TradeLog(tmp_path / "trade_log.db")
+    log.append({"event": "chart_preview", "symbol": "AAPL", "allowed": True})
+    log.append({"event": "bracket_submitted", "symbol": "AAPL"})
+    reloaded = TradeLog(tmp_path / "trade_log.db")
+    events = reloaded.tail(10)
+    assert [e["event"] for e in events] == ["chart_preview", "bracket_submitted"]
+    assert all("at" in e for e in events)
+    # JSONL twin exists for grep/tail workflows
+    assert (tmp_path / "trade_log.jsonl").exists()
