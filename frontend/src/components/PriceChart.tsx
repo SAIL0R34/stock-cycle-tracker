@@ -5,19 +5,7 @@ import TradeDock, { type DockState } from './TradeDock';
 import { tradingApi } from '../api/client';
 import type { TradingOrderLine, TradingPositionLine } from '../api/client';
 import { bollinger, donchian, ema, sma, vwap } from '../lib/indicators';
-
-const COLORS = {
-  up: '#2ecc71',
-  down: '#e74c3c',
-  pivotHigh: '#f39c12',
-  pivotLow: '#3498db',
-  forming: '#f7931a',
-  sma: '#f1c40f',
-  ema: '#9b59b6',
-  bb: '#3b82f6',
-  vwap: '#1abc9c',
-  donchian: '#8791a3',
-};
+import { readChartTheme, useTheme, withAlpha } from '../lib/theme';
 
 type Overlay = 'legs' | 'pivots' | 'zones' | 'events' | 'volume';
 
@@ -73,6 +61,7 @@ function fmtTime(ts: string): string {
 
 export default function PriceChart({ result }: { result: AnalysisResult }) {
   const el = useRef<HTMLDivElement>(null);
+  const theme = useTheme();
   const [on, setOn] = useState<Record<Overlay, boolean>>({
     legs: true, pivots: true, zones: true, events: true, volume: true,
   });
@@ -145,6 +134,7 @@ export default function PriceChart({ result }: { result: AnalysisResult }) {
     const node = el.current;
     if (!node || !window.Plotly) return;
 
+    const C = readChartTheme();
     const candles = result.candles || [];
     const data: Array<Record<string, unknown>> = [
       {
@@ -155,8 +145,8 @@ export default function PriceChart({ result }: { result: AnalysisResult }) {
         high: candles.map((c) => c.h),
         low: candles.map((c) => c.l),
         close: candles.map((c) => c.c),
-        increasing: { line: { color: COLORS.up } },
-        decreasing: { line: { color: COLORS.down } },
+        increasing: { line: { color: C.up } },
+        decreasing: { line: { color: C.down } },
         opacity: 0.85,
       },
     ];
@@ -168,7 +158,7 @@ export default function PriceChart({ result }: { result: AnalysisResult }) {
         name: 'Volume',
         x: candles.map((c) => c.t),
         y: candles.map((c) => c.v / maxVol),       // 0..1, drawn on a slim overlay axis
-        marker: { color: candles.map((c) => (c.c >= c.o ? 'rgba(46,204,113,0.35)' : 'rgba(231,76,60,0.35)')) },
+        marker: { color: candles.map((c) => (c.c >= c.o ? withAlpha(C.up, 0.35) : withAlpha(C.down, 0.35))) },
         yaxis: 'y2',
         hoverinfo: 'skip',
         showlegend: false,
@@ -183,7 +173,7 @@ export default function PriceChart({ result }: { result: AnalysisResult }) {
           mode: 'lines',
           x: [leg.start_timestamp, leg.end_timestamp],
           y: [leg.start_price, leg.end_price],
-          line: { color: leg.direction === 'up' ? COLORS.up : COLORS.down, width: 2 },
+          line: { color: leg.direction === 'up' ? C.up : C.down, width: 2 },
           hoverinfo: 'text',
           text: `Leg ${leg.leg_id}: ${leg.direction} ${leg.percent_change.toFixed(2)}% in ${Math.round(leg.duration_minutes)}m`,
           showlegend: false,
@@ -201,16 +191,16 @@ export default function PriceChart({ result }: { result: AnalysisResult }) {
       indicatorTraces.push(
         {
           type: 'scatter', mode: 'lines', name: `BB upper (${indicators.bb.period}, ${indicators.bb.mult}σ)`,
-          x: xs, y: bb.upper, line: { color: COLORS.bb, width: 1 }, hoverinfo: 'skip',
+          x: xs, y: bb.upper, line: { color: C.accent2, width: 1 }, hoverinfo: 'skip',
         },
         {
           type: 'scatter', mode: 'lines', name: `BB lower (${indicators.bb.period})`,
-          x: xs, y: bb.lower, line: { color: COLORS.bb, width: 1 },
-          fill: 'tonexty', fillcolor: 'rgba(59, 130, 246, 0.08)', hoverinfo: 'skip',
+          x: xs, y: bb.lower, line: { color: C.accent2, width: 1 },
+          fill: 'tonexty', fillcolor: withAlpha(C.accent2, 0.08), hoverinfo: 'skip',
         },
         {
           type: 'scatter', mode: 'lines', name: `BB basis`,
-          x: xs, y: bb.mid, line: { color: COLORS.bb, width: 1, dash: 'dot' }, hoverinfo: 'skip',
+          x: xs, y: bb.mid, line: { color: C.accent2, width: 1, dash: 'dot' }, hoverinfo: 'skip',
         },
       );
     }
@@ -218,21 +208,21 @@ export default function PriceChart({ result }: { result: AnalysisResult }) {
       indicatorTraces.push({
         type: 'scatter', mode: 'lines', name: `SMA ${indicators.sma.period}`,
         x: xs, y: sma(closes, indicators.sma.period),
-        line: { color: COLORS.sma, width: 1.5 },
+        line: { color: C.sma, width: 1.5 },
       });
     }
     if (indicators.ema.on && candles.length > indicators.ema.period) {
       indicatorTraces.push({
         type: 'scatter', mode: 'lines', name: `EMA ${indicators.ema.period}`,
         x: xs, y: ema(closes, indicators.ema.period),
-        line: { color: COLORS.ema, width: 1.5 },
+        line: { color: C.ema, width: 1.5 },
       });
     }
     if (indicators.vwap.on) {
       indicatorTraces.push({
         type: 'scatter', mode: 'lines', name: 'VWAP (window)',
         x: xs, y: vwap(candles),
-        line: { color: COLORS.vwap, width: 1.8, dash: 'dash' },
+        line: { color: C.vwap, width: 1.8, dash: 'dash' },
       });
     }
     if (indicators.donchian.on && candles.length > indicators.donchian.period) {
@@ -240,11 +230,11 @@ export default function PriceChart({ result }: { result: AnalysisResult }) {
       indicatorTraces.push(
         {
           type: 'scatter', mode: 'lines', name: `Donchian ${indicators.donchian.period} high`,
-          x: xs, y: dc.upper, line: { color: COLORS.donchian, width: 1, dash: 'dash' }, hoverinfo: 'skip',
+          x: xs, y: dc.upper, line: { color: C.muted, width: 1, dash: 'dash' }, hoverinfo: 'skip',
         },
         {
           type: 'scatter', mode: 'lines', name: `Donchian ${indicators.donchian.period} low`,
-          x: xs, y: dc.lower, line: { color: COLORS.donchian, width: 1, dash: 'dash' }, hoverinfo: 'skip',
+          x: xs, y: dc.lower, line: { color: C.muted, width: 1, dash: 'dash' }, hoverinfo: 'skip',
         },
       );
     }
@@ -258,11 +248,11 @@ export default function PriceChart({ result }: { result: AnalysisResult }) {
         mode: 'lines+text',
         x: [fl.start_timestamp, fl.end_timestamp],
         y: [fl.start_price, fl.end_price],
-        line: { color: COLORS.forming, width: 2, dash: 'dot' },
+        line: { color: C.accent, width: 2, dash: 'dot' },
         hoverinfo: 'text',
         text: ['', 'forming'],
         textposition: 'top center',
-        textfont: { size: 10, color: COLORS.forming },
+        textfont: { size: 10, color: C.accent },
         showlegend: false,
         hoverlabel: { namelength: -1 },
         hovertemplate: `Forming leg: ${fl.direction} ${fl.percent_change.toFixed(2)}% so far (${fl.duration_bars} bars)<extra></extra>`,
@@ -279,7 +269,7 @@ export default function PriceChart({ result }: { result: AnalysisResult }) {
           name: 'Swing highs',
           x: highs.map((p) => p.timestamp),
           y: highs.map((p) => p.price),
-          marker: { symbol: 'triangle-down', size: 10, color: COLORS.pivotHigh },
+          marker: { symbol: 'triangle-down', size: 10, color: C.pivotHigh },
         },
         {
           type: 'scatter',
@@ -287,14 +277,14 @@ export default function PriceChart({ result }: { result: AnalysisResult }) {
           name: 'Swing lows',
           x: lows.map((p) => p.timestamp),
           y: lows.map((p) => p.price),
-          marker: { symbol: 'triangle-up', size: 10, color: COLORS.pivotLow },
+          marker: { symbol: 'triangle-up', size: 10, color: C.pivotLow },
         },
       );
     }
 
     const shapes: Array<Record<string, unknown>> = [];
     for (const item of result.structure_discoveries || []) {
-      const color = item.direction === 'bullish' ? '#2ecc71' : item.direction === 'bearish' ? '#e74c3c' : '#60a5fa';
+      const color = item.direction === 'bullish' ? C.up : item.direction === 'bearish' ? C.down : C.neutral;
       if (on.zones && item.zone_low != null && item.zone_high != null) {
         shapes.push({ type: 'rect', xref: 'x', yref: 'y', x0: item.start_timestamp, x1: candles.at(-1)?.t || item.end_timestamp,
           y0: item.zone_low, y1: item.zone_high, fillcolor: color, opacity: 0.1, line: { color, width: 1, dash: 'dot' } });
@@ -311,14 +301,14 @@ export default function PriceChart({ result }: { result: AnalysisResult }) {
     if (last) {
       shapes.push({
         type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: last.c, y1: last.c,
-        line: { color: 'rgba(247,147,26,0.55)', width: 1, dash: 'dot' },
+        line: { color: withAlpha(C.accent, 0.55), width: 1, dash: 'dot' },
       });
     }
 
     // Persistent paper order/position lines (from the broker)
     for (const line of orderLines) {
       if (line.price == null) continue;
-      const color = line.kind === 'stop' ? 'var(--down)' : 'var(--accent-secondary)';
+      const color = line.kind === 'stop' ? C.down : C.accent2;
       shapes.push({
         type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: line.price, y1: line.price,
         line: { color, width: 1.4, dash: 'dash' },
@@ -333,13 +323,13 @@ export default function PriceChart({ result }: { result: AnalysisResult }) {
     for (const pos of positionLines) {
       shapes.push({
         type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: pos.price, y1: pos.price,
-        line: { color: '#9b59b6', width: 1.4 },
+        line: { color: C.ema, width: 1.4 },
         opacity: 0.8,
       });
       data.push({
         type: 'scatter', mode: 'text', x: [candles.at(-1)?.t], y: [pos.price],
         text: [`${pos.qty} @ ${pos.price.toFixed(2)} (${pos.pnl >= 0 ? '+' : ''}${pos.pnl.toFixed(0)})`],
-        textposition: 'bottom right', textfont: { size: 9, color: '#9b59b6' },
+        textposition: 'bottom right', textfont: { size: 9, color: C.ema },
         showlegend: false, hoverinfo: 'skip',
       });
     }
@@ -352,32 +342,32 @@ export default function PriceChart({ result }: { result: AnalysisResult }) {
         shapes.push({
           type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y',
           y0: dock.entryPrice, y1: dock.entryPrice,
-          line: { color: 'var(--accent-secondary)', width: 2, dash: 'dot' }, editable: true,
+          line: { color: C.accent2, width: 2, dash: 'dot' }, editable: true,
           opacity: 0.95,
         });
       }
       shapes.push({
         type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y',
         y0: dock.stopPrice, y1: dock.stopPrice,
-        line: { color: 'var(--down)', width: 2, dash: 'dot' }, editable: true,
+        line: { color: C.down, width: 2, dash: 'dot' }, editable: true,
         opacity: 0.95,
       });
       data.push({
         type: 'scatter', mode: 'text', x: [candles.at(-1)?.t], y: [dock.stopPrice],
         text: [`STOP ${dock.stopPrice.toFixed(2)}`], textposition: 'top right',
-        textfont: { size: 9, color: 'var(--down)' }, showlegend: false, hoverinfo: 'skip',
+        textfont: { size: 9, color: C.down }, showlegend: false, hoverinfo: 'skip',
       });
       if (dock.takeProfitPrice != null) {
         shapes.push({
           type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y',
           y0: dock.takeProfitPrice, y1: dock.takeProfitPrice,
-          line: { color: 'var(--up)', width: 2, dash: 'dot' }, editable: true,
+          line: { color: C.up, width: 2, dash: 'dot' }, editable: true,
           opacity: 0.95,
         });
         data.push({
           type: 'scatter', mode: 'text', x: [candles.at(-1)?.t], y: [dock.takeProfitPrice],
           text: [`TARGET ${dock.takeProfitPrice.toFixed(2)}`], textposition: 'bottom right',
-          textfont: { size: 9, color: 'var(--up)' }, showlegend: false, hoverinfo: 'skip',
+          textfont: { size: 9, color: C.up }, showlegend: false, hoverinfo: 'skip',
         });
       }
     }
@@ -387,10 +377,10 @@ export default function PriceChart({ result }: { result: AnalysisResult }) {
       height: 520,
       paper_bgcolor: 'rgba(0,0,0,0)',
       plot_bgcolor: 'rgba(0,0,0,0)',
-      font: { color: '#b6bfcd', size: 11 },
+      font: { color: C.text, size: 11 },
       xaxis: {
         rangeslider: { visible: false },
-        gridcolor: '#232b38',
+        gridcolor: C.grid,
         rangeselector: {
           buttons: [
             { count: 12, label: '12h', step: 'hour', stepmode: 'backward' },
@@ -399,16 +389,16 @@ export default function PriceChart({ result }: { result: AnalysisResult }) {
             { count: 1, label: '1m', step: 'month', stepmode: 'backward' },
             { step: 'all', label: 'All' },
           ],
-          bgcolor: '#12161f',
-          activecolor: '#f7931a',
-          font: { color: '#b6bfcd', size: 10 },
+          bgcolor: C.panel,
+          activecolor: theme === 'dark' ? C.accent : C.grid,
+          font: { color: C.text, size: 10 },
           borderwidth: 0,
           x: 1,
           xanchor: 'right',
           y: 1.16,
         },
       },
-      yaxis: { gridcolor: '#232b38', tickprefix: '$', domain: on.volume ? [0.22, 1] : [0, 1] },
+      yaxis: { gridcolor: C.grid, tickprefix: '$', domain: on.volume ? [0.22, 1] : [0, 1] },
       yaxis2: { domain: [0, 0.16], visible: false },
       legend: { orientation: 'h', y: 1.16, x: 0 },
       dragmode: 'zoom',
@@ -460,7 +450,7 @@ export default function PriceChart({ result }: { result: AnalysisResult }) {
         window.Plotly.purge(node);
       }
     };
-  }, [result, on, indicators, dock, tradeMode, orderLines, positionLines]);
+  }, [result, on, indicators, dock, tradeMode, orderLines, positionLines, theme]);
 
   const fl = result.forming_leg;
   const activeIndicators = [
