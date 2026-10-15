@@ -70,6 +70,7 @@ export interface ChartTheme {
   vwap: string;
   neutral: string;
   outline: string;    // marker outline that must stand out from the background
+  activeButton: string;
 }
 
 /** Current theme's chart colours, read from the CSS variables (dark values as fallback). */
@@ -93,6 +94,7 @@ export function readChartTheme(): ChartTheme {
     vwap: get('--chart-vwap', '#1abc9c'),
     neutral: get('--chart-neutral', '#60a5fa'),
     outline: get('--chart-outline', '#ffffff'),
+    activeButton: get('--chart-active', '#f7931a'),
   };
 }
 

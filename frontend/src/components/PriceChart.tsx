@@ -390,7 +390,7 @@ export default function PriceChart({ result }: { result: AnalysisResult }) {
             { step: 'all', label: 'All' },
           ],
           bgcolor: C.panel,
-          activecolor: theme === 'dark' ? C.accent : C.grid,
+          activecolor: C.activeButton,
           font: { color: C.text, size: 10 },
           borderwidth: 0,
           x: 1,

@@ -57,7 +57,7 @@ function Gauge({ score, action }: { score: number; action: string }) {
       <path d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx - r * Math.cos(Math.PI * 0.82)} ${cy - r * Math.sin(Math.PI * 0.82)}`}
         fill="none" stroke="rgba(231,76,60,0.35)" strokeWidth="16" strokeLinecap="round" />
       <path d={`M ${cx - r * Math.cos(Math.PI * 0.18)} ${cy - r * Math.sin(Math.PI * 0.18)} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
-        fill="none" stroke="rgba(46,204,113,0.35) " strokeWidth="16" strokeLinecap="round" />
+        fill="none" stroke="rgba(46,204,113,0.35)" strokeWidth="16" strokeLinecap="round" />
       <line x1={cx} y1={cy} x2={x} y2={y} stroke={color} strokeWidth="3.5" strokeLinecap="round" />
       <circle cx={cx} cy={cy} r="6" fill={color} />
       <text x={cx - r - 2} y={cy + 30} textAnchor="middle" fontSize="11" fill="var(--down)">−100</text>
