@@ -7,22 +7,28 @@ import { useEffect, useRef, useState } from 'react';
 import type { AnalysisResult } from '../api/client';
 import ModulePlaceholder from './ModulePlaceholder';
 import HelpDot from './HelpDot';
+import { readChartTheme, useTheme, type ChartTheme } from '../lib/theme';
 
-const PHASE_STYLE: Record<string, { color: string; symbol: string }> = {
-  new: { color: '#8791a3', symbol: 'circle' },
-  first_quarter: { color: '#3b82f6', symbol: 'triangle-up' },
-  full: { color: '#f7931a', symbol: 'circle' },
-  last_quarter: { color: '#9b59b6', symbol: 'triangle-down' },
-};
+function phaseStyles(C: ChartTheme): Record<string, { color: string; symbol: string }> {
+  return {
+    new: { color: C.muted, symbol: 'circle' },
+    first_quarter: { color: C.accent2, symbol: 'triangle-up' },
+    full: { color: C.accent, symbol: 'circle' },
+    last_quarter: { color: C.ema, symbol: 'triangle-down' },
+  };
+}
 
 function MoonChart({ result }: { result: AnalysisResult }) {
   const el = useRef<HTMLDivElement>(null);
+  const theme = useTheme();
   const moon = result.moon_phase_insight;
 
   useEffect(() => {
     const node = el.current;
     if (!node || !window.Plotly || !moon) return;
 
+    const C = readChartTheme();
+    const PHASE_STYLE = phaseStyles(C);
     const candles = result.candles || [];
     const closes = {
       x: candles.map(c => c.t),
@@ -33,14 +39,14 @@ function MoonChart({ result }: { result: AnalysisResult }) {
       {
         type: 'scatter', mode: 'lines', name: `${result.metadata.symbol} close`,
         x: closes.x, y: closes.y,
-        line: { color: '#b6bfcd', width: 1.5 },
+        line: { color: C.text, width: 1.5 },
         hovertemplate: '$%{y:,.0f}<extra></extra>',
       },
     ];
     const shapes: Array<Record<string, unknown>> = [];
 
     for (const ev of moon.events) {
-      const style = PHASE_STYLE[ev.phase_code] || { color: '#8791a3', symbol: 'circle' };
+      const style = PHASE_STYLE[ev.phase_code] || { color: C.muted, symbol: 'circle' };
       shapes.push({
         type: 'line', xref: 'x', x0: ev.timestamp, x1: ev.timestamp,
         yref: 'paper', y0: 0, y1: 1,
@@ -58,7 +64,7 @@ function MoonChart({ result }: { result: AnalysisResult }) {
         marker: {
           symbol: style.symbol, size: ev.aligned_within_window ? 11 : 8,
           color: style.color,
-          line: ev.aligned_within_window ? { color: '#ffffff', width: 1.5 } : undefined,
+          line: ev.aligned_within_window ? { color: C.outline, width: 1.5 } : undefined,
         },
         hoverinfo: 'text',
         text: parts.join(' · '),
@@ -71,9 +77,9 @@ function MoonChart({ result }: { result: AnalysisResult }) {
       height: 400,
       paper_bgcolor: 'rgba(0,0,0,0)',
       plot_bgcolor: 'rgba(0,0,0,0)',
-      font: { color: '#b6bfcd', size: 11 },
-      xaxis: { gridcolor: '#232b38', rangeslider: { visible: false } },
-      yaxis: { gridcolor: '#232b38', tickprefix: '$' },
+      font: { color: C.text, size: 11 },
+      xaxis: { gridcolor: C.grid, rangeslider: { visible: false } },
+      yaxis: { gridcolor: C.grid, tickprefix: '$' },
       legend: { orientation: 'h', y: 1.1, x: 0 },
       hovermode: 'closest',
       shapes,
@@ -81,31 +87,33 @@ function MoonChart({ result }: { result: AnalysisResult }) {
 
     window.Plotly.react(node, data, layout, { responsive: true, displaylogo: false });
     return () => { if (node) window.Plotly.purge(node); };
-  }, [result, moon]);
+  }, [result, moon, theme]);
 
   return <div ref={el} />;
 }
 
 function PhaseBars({ moon }: { moon: NonNullable<AnalysisResult['moon_phase_insight']> }) {
   const el = useRef<HTMLDivElement>(null);
+  const theme = useTheme();
 
   useEffect(() => {
     const node = el.current;
     if (!node || !window.Plotly) return;
     const stats = moon.phase_stats;
     if (!stats.length) return;
+    const C = readChartTheme();
 
     const data = [
       {
         type: 'bar', name: 'swings landed near phase',
         x: stats.map(s => s.phase_name), y: stats.map(s => s.alignment_rate * 100),
-        marker: { color: '#3b82f6' },
+        marker: { color: C.accent2 },
         hovertemplate: '%{x}: %{y:.0f}% of phases landed near a swing<extra></extra>',
       },
       {
         type: 'bar', name: 'next leg was up',
         x: stats.map(s => s.phase_name), y: stats.map(s => s.bullish_next_leg_rate * 100),
-        marker: { color: '#2ecc71' },
+        marker: { color: C.up },
         hovertemplate: '%{x}: %{y:.0f}% of next legs were up<extra></extra>',
       },
     ];
@@ -115,14 +123,14 @@ function PhaseBars({ moon }: { moon: NonNullable<AnalysisResult['moon_phase_insi
       barmode: 'group',
       paper_bgcolor: 'rgba(0,0,0,0)',
       plot_bgcolor: 'rgba(0,0,0,0)',
-      font: { color: '#b6bfcd', size: 10 },
-      xaxis: { gridcolor: '#232b38' },
-      yaxis: { gridcolor: '#232b38', ticksuffix: '%', range: [0, 100] },
+      font: { color: C.text, size: 10 },
+      xaxis: { gridcolor: C.grid },
+      yaxis: { gridcolor: C.grid, ticksuffix: '%', range: [0, 100] },
       legend: { orientation: 'h', y: 1.2, x: 0, font: { size: 9 } },
     };
     window.Plotly.react(node, data, layout, { responsive: true, displaylogo: false });
     return () => { if (node) window.Plotly.purge(node); };
-  }, [moon]);
+  }, [moon, theme]);
 
   return <div ref={el} />;
 }

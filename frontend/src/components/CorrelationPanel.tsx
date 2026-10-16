@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { AnalysisResult, AssetCorrelation } from '../api/client';
 import ModulePlaceholder from './ModulePlaceholder';
 import HelpDot from './HelpDot';
+import { readChartTheme, useTheme } from '../lib/theme';
 
 const signed = (v: number | null | undefined, digits = 2) =>
   v == null || Number.isNaN(v) ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(digits)}%`;
@@ -19,11 +20,13 @@ function corrTone(v: number | null) {
 
 function CorrelationChart({ name, c }: { name: string; c: AssetCorrelation }) {
   const el = useRef<HTMLDivElement>(null);
+  const theme = useTheme();
 
   useEffect(() => {
     const node = el.current;
     if (!node || !window.Plotly || c.observations.length === 0) return;
 
+    const C = readChartTheme();
     const obs = c.observations;
     const hasRolling = obs.some(o => o.rolling_return_correlation != null);
 
@@ -31,12 +34,12 @@ function CorrelationChart({ name, c }: { name: string; c: AssetCorrelation }) {
       {
         type: 'scatter', mode: 'lines', name: `BTC (rebased)`,
         x: obs.map(o => o.timestamp), y: obs.map(o => o.btc_normalized),
-        line: { color: '#f7931a', width: 2 },
+        line: { color: C.accent, width: 2 },
       },
       {
         type: 'scatter', mode: 'lines', name: `${c.asset_name} (rebased)`,
         x: obs.map(o => o.timestamp), y: obs.map(o => o.asset_normalized),
-        line: { color: '#3b82f6', width: 2, dash: 'dot' },
+        line: { color: C.accent2, width: 2, dash: 'dot' },
       },
     ];
     if (hasRolling) {
@@ -44,7 +47,7 @@ function CorrelationChart({ name, c }: { name: string; c: AssetCorrelation }) {
         type: 'scatter', mode: 'lines', name: `rolling corr (${c.rolling_window_days}d)`,
         x: obs.map(o => o.timestamp),
         y: obs.map(o => o.rolling_return_correlation),
-        line: { color: '#8791a3', width: 1.5 },
+        line: { color: C.muted, width: 1.5 },
         yaxis: 'y2',
         hovertemplate: 'rolling corr %{y:.2f}<extra></extra>',
       });
@@ -55,27 +58,27 @@ function CorrelationChart({ name, c }: { name: string; c: AssetCorrelation }) {
       height: 380,
       paper_bgcolor: 'rgba(0,0,0,0)',
       plot_bgcolor: 'rgba(0,0,0,0)',
-      font: { color: '#b6bfcd', size: 11 },
+      font: { color: C.text, size: 11 },
       showlegend: true,
       legend: { orientation: 'h', y: 1.12, x: 0 },
       hovermode: 'x unified',
-      xaxis: { gridcolor: '#232b38' },
+      xaxis: { gridcolor: C.grid },
       yaxis: {
-        gridcolor: '#232b38', title: { text: 'rebased to 100', font: { size: 10 } },
+        gridcolor: C.grid, title: { text: 'rebased to 100', font: { size: 10 } },
         domain: hasRolling ? [0.34, 1] : [0, 1],
       },
       ...(hasRolling ? {
         yaxis2: {
-          gridcolor: '#232b38', range: [-1.05, 1.05], domain: [0, 0.24],
+          gridcolor: C.grid, range: [-1.05, 1.05], domain: [0, 0.24],
           title: { text: 'rolling corr', font: { size: 10 } },
-          zerolinecolor: '#5b6474',
+          zerolinecolor: C.zeroline,
         },
       } : {}),
     };
 
     window.Plotly.react(node, data, layout, { responsive: true, displaylogo: false });
     return () => { if (node) window.Plotly.purge(node); };
-  }, [c, name]);
+  }, [c, name, theme]);
 
   return <div ref={el} />;
 }

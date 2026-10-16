@@ -23,6 +23,7 @@ import MoonPanel from './components/MoonPanel';
 import SettingsOverlay from './components/SettingsOverlay';
 import MoversTape from './components/MoversTape';
 import type { ScanPayload } from './api/client';
+import { toggleTheme, useTheme } from './lib/theme';
 
 type Tab = 'legs' | 'pivots' | 'crossasset' | 'moon' | 'insights';
 
@@ -101,6 +102,7 @@ export default function App() {
   const [scan, setScan] = useState<ScanPayload | null>(null);
   const [movers, setMovers] = useState<MoverRow[] | null>(null);
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
+  const theme = useTheme();
   const lastScanAt = useRef(0);
   const scanInFlight = useRef(false);
   const onScanArrived = useCallback((payload: ScanPayload) => {
@@ -377,6 +379,15 @@ export default function App() {
             onClick={() => setCustomizing(!customizing)}
           >
             {customizing ? '✓ Done' : '⠿ Customize'}
+          </button>
+          <button
+            className="btn btn-secondary"
+            style={{ fontSize: '0.78rem' }}
+            title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            onClick={toggleTheme}
+          >
+            {theme === 'dark' ? '☀' : '🌙'}
           </button>
           <button className="btn btn-secondary" style={{ fontSize: '0.78rem' }} title="API keys & gateway settings"
             onClick={() => setShowSettings(true)}>
