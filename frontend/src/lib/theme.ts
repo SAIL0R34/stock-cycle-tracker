@@ -5,6 +5,9 @@
  * styles/theme.css swap on that attribute) and is persisted to localStorage.
  * Plotly can't read CSS directly, so charts call readChartTheme() whenever
  * they (re)draw and useTheme() to know when a redraw is needed.
+ *
+ * index.html contains a pre-paint twin of readStoredTheme(); if the fallback
+ * rules change, update both.
  */
 import { useSyncExternalStore } from 'react';
 
@@ -12,12 +15,17 @@ export type Theme = 'dark' | 'light';
 
 const THEME_KEY = 'sct-theme-v1';
 
+/** The OS preference, used for visitors who have never toggled. */
+function systemTheme(): Theme {
+  return window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+}
+
 function readStoredTheme(): Theme {
   try {
     const raw = localStorage.getItem(THEME_KEY);
     if (raw === 'light' || raw === 'dark') return raw;
-  } catch { /* storage blocked: fall back to dark */ }
-  return 'dark';
+  } catch { /* storage blocked: fall back to the system preference */ }
+  return systemTheme();
 }
 
 function currentTheme(): Theme {

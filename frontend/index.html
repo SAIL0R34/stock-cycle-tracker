@@ -4,6 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Stock Cycle Tracker</title>
+    <script>
+      // Apply the saved theme before first paint so light-theme users don't
+      // get a dark flash while the bundle loads. Keep this in sync with
+      // readStoredTheme() in src/lib/theme.ts.
+      try {
+        var t = localStorage.getItem('sct-theme-v1');
+        if (t !== 'light' && t !== 'dark') {
+          t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        }
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) { /* storage blocked: no attribute, dark palette applies */ }
+    </script>
     <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   </head>
   <body>
